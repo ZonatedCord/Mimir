@@ -88,19 +88,29 @@ Mimir fills that gap. Run `/estimate-task` before you run the task. Get a risk a
 ## Install
 
 ```bash
-git clone https://github.com/marcobarlera/mimir ~/.claude/mimir
+rm -rf ~/.claude/mimir && \
+git clone https://github.com/ZonatedCord/Mimir.git ~/.claude/mimir && \
+mkdir -p ~/.claude/commands/ && \
 cp -r ~/.claude/mimir/.claude/commands/* ~/.claude/commands/
 ```
 
-**Requirements:** Node.js ≥ 18. No `npm install`. No config files. No API keys to set up (Claude Code users already have `ANTHROPIC_API_KEY`).
+**Requirements:** Node.js ≥ 18. No `npm install`. No config files. No API keys (Claude Code users already have `ANTHROPIC_API_KEY`).
 
-### Verify installation
+### Update
+
+```
+/mimir-update
+```
+
+Or run the install command above — it's idempotent (`rm -rf` first).
+
+### Verify
 
 ```bash
 node ~/.claude/mimir/scripts/estimate.js "hello world"
 ```
 
-Expected: a preflight report with `LOW ✅` risk.
+Expected: preflight report with `LOW ✅` risk.
 
 ---
 
@@ -148,6 +158,26 @@ Suggests how to break a large task into smaller, safer sub-tasks.
 ```
 /split-task "<describe the task you want to split>"
 /split-task "<task>" --files path/to/file1.ts path/to/file2.ts
+```
+
+---
+
+### `/mimir-help`
+
+Shows all available commands and the recommended workflow.
+
+```
+/mimir-help
+```
+
+---
+
+### `/mimir-update`
+
+Updates Mimir to the latest version. Idempotent — safe to run anytime.
+
+```
+/mimir-update
 ```
 
 With `--files`, each suggested sub-task includes the file token cost in its risk estimate.
@@ -230,7 +260,9 @@ mimir/
 ├── .claude/
 │   └── commands/
 │       ├── estimate-task.md     # /estimate-task slash command
-│       └── split-task.md        # /split-task slash command
+│       ├── split-task.md        # /split-task slash command
+│       ├── mimir-help.md        # /mimir-help slash command
+│       └── mimir-update.md      # /mimir-update slash command
 ├── scripts/
 │   ├── estimate.js              # entry point: reads argv, calls lib, prints output
 │   ├── split.js                 # entry point: reads argv, detects split points, prints output
@@ -332,19 +364,27 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 - Zero-dependency install
 - MIT license
 
-### V2 — Current
+### V2 — Complete
 - `--files` flag: include actual file content in token estimate
 - Multi-model support: Opus 4.7, Haiku 4.5, Sonnet 4.6 recommendations
 - MODELS export for downstream tooling
 
-### V3 — Current
+### V3 — Complete
 - `.mimir.json` per-project config (custom thresholds, context window, default model)
 - `--files` flag in both `/estimate-task` and `/split-task`
 
-### V4 — Next
+### V4 — Complete
 - Superpowers plugin wrapper for one-command install
+- GitHub Actions CI matrix (Node 18/20/22)
+- Schema validation for `.mimir.json`
 
-### V5 — Context awareness
+### V5 — Current
+- `/mimir-help` command
+- `/mimir-update` command (idempotent reinstall)
+- Fixed install commands (correct URL, `rm -rf` + `mkdir -p`)
+- Fixed prompt-passthrough bug in slash commands
+
+### V6 — Planned
 - Reads `git diff` to estimate upcoming task size automatically
 - Pre-task hook integration with Claude Code
 - Local token usage history
