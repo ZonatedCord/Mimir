@@ -24,6 +24,23 @@ const out2 = execSync(
 assert.match(out2, /1\./);
 assert.match(out2, /2\./);
 
+// --files flag — shows file breakdown
+const out3 = execSync(
+  'node scripts/split.js "refactor auth module and then update tests" --files package.json',
+  { env: NO_KEY }
+).toString();
+
+assert.match(out3, /Files loaded/,   'missing files loaded line');
+assert.match(out3, /package\.json/,  'missing file name');
+assert.match(out3, /Suggested split/);
+
+// --files missing file — shows warning, does not crash
+const out4 = execSync(
+  'node scripts/split.js "some task" --files nonexistent.ts',
+  { env: NO_KEY }
+).toString();
+assert.match(out4, /⚠/);
+
 // No arguments → non-zero exit
 try {
   execSync('node scripts/split.js 2>&1', { env: NO_KEY });

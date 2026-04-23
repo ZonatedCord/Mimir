@@ -1,12 +1,32 @@
 #!/usr/bin/env node
+const fs   = require('fs');
+const path = require('path');
 const { estimateTokens } = require('./lib/tokenizer');
 const { classifyRisk }   = require('./lib/risk');
+const { loadConfig }     = require('./lib/config');
 
 const LINE = '━'.repeat(35);
 const ACTION_VERBS = [
   'analyze', 'refactor', 'test', 'document', 'review',
   'update', 'fix', 'add', 'remove', 'migrate', 'audit',
 ];
+
+function parseArgs(argv) {
+  const filesIdx = argv.indexOf('--files');
+  if (filesIdx === -1) return { task: argv.join(' ').trim(), filePaths: [] };
+  return {
+    task:      argv.slice(0, filesIdx).join(' ').trim(),
+    filePaths: argv.slice(filesIdx + 1),
+  };
+}
+
+function readFile(filePath) {
+  try {
+    return { path: filePath, content: fs.readFileSync(filePath, 'utf8'), error: null };
+  } catch (err) {
+    return { path: filePath, content: null, error: err.message };
+  }
+}
 
 function detectSplitPoints(task) {
   // Priority 1: explicit conjunctions
@@ -39,25 +59,52 @@ function detectSplitPoints(task) {
 }
 
 async function main() {
-  const task = process.argv.slice(2).join(' ').trim();
+  const { task, filePaths } = parseArgs(process.argv.slice(2));
+
   if (!task) {
-    process.stderr.write('Usage: node split.js "<task description>"\n');
+    process.stderr.write('Usage: node split.js "<task>" [--files file1 file2 ...]\n');
     process.exit(1);
   }
 
+  const cfg   = loadConfig();
   const parts = detectSplitPoints(task);
+
+  let fileTokens = 0;
+  const fileResults = [];
+  for (const fp of filePaths) {
+    const f = readFile(fp);
+    if (f.error) {
+      fileResults.push({ path: fp, tokens: 0, error: f.error });
+    } else {
+      const t = estimateTokens(f.content);
+      fileResults.push({ path: fp, tokens: t, error: null });
+      fileTokens += t;
+    }
+  }
 
   process.stdout.write(`\n⚡ MIMIR SPLIT\n`);
   process.stdout.write(`${LINE}\n`);
+
+  if (fileResults.length > 0) {
+    process.stdout.write(`  Files loaded:  ~${fileTokens.toLocaleString()} tokens\n`);
+    for (const f of fileResults) {
+      const name = path.basename(f.path).padEnd(20).slice(0, 20);
+      if (f.error) process.stdout.write(`    ${name}  ⚠ ${f.error}\n`);
+      else         process.stdout.write(`    ${name}  ~${f.tokens.toLocaleString()}\n`);
+    }
+    process.stdout.write(`\n`);
+  }
+
   process.stdout.write(`  Suggested split:\n`);
 
   for (let i = 0; i < parts.length; i++) {
-    const part    = parts[i];
-    const tokens  = estimateTokens(part);
-    const risk    = classifyRisk(tokens);
-    const preview = part.length > 55 ? `${part.substring(0, 52)}...` : part;
+    const part        = parts[i];
+    const taskTokens  = estimateTokens(part);
+    const totalTokens = taskTokens + fileTokens;
+    const risk        = classifyRisk(totalTokens, cfg);
+    const preview     = part.length > 55 ? `${part.substring(0, 52)}...` : part;
     process.stdout.write(`  ${i + 1}. "${preview}"\n`);
-    process.stdout.write(`     → ${risk.level} ${risk.emoji} (~${tokens.toLocaleString()} tokens)\n`);
+    process.stdout.write(`     → ${risk.level} ${risk.emoji} (~${totalTokens.toLocaleString()} tokens)\n`);
   }
 
   process.stdout.write(`  Tip: split by module/feature, not by file type\n`);
