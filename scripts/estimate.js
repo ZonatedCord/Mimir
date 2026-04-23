@@ -7,7 +7,20 @@ const { classifyRisk, contextHeadroom }     = require('./lib/risk');
 const { loadConfig }                        = require('./lib/config');
 const { appendHistory }                     = require('./lib/history');
 
-const LINE = '━'.repeat(35);
+const LINE  = '━'.repeat(35);
+const HELP  = `
+⚡ MIMIR — preflight checker
+
+Usage:
+  /mimir "<task>"                   Estimate token cost + risk
+  /mimir "<task>" --files f1 f2     Include file content in estimate
+  /mimir "<task>" --git-diff        Include current git diff in estimate
+  /split-task "<task>"              Split large task into safer sub-tasks
+
+Risk levels: LOW ✅  MEDIUM ⚠️  HIGH 🔴  CRITICAL 🚨
+
+Tip: run /mimir before any task that reads many files or touches large codebases.
+`.trimStart();
 
 function parseArgs(argv) {
   const gitDiffIdx = argv.indexOf('--git-diff');
@@ -55,8 +68,8 @@ async function main() {
   const { task, filePaths, useGitDiff } = parseArgs(process.argv.slice(2));
 
   if (!task) {
-    process.stderr.write('Usage: node estimate.js "<task>" [--files file1 file2 ...] [--git-diff]\n');
-    process.exit(1);
+    process.stdout.write(HELP);
+    process.exit(0);
   }
 
   const cfg = loadConfig();
@@ -124,6 +137,17 @@ async function main() {
   process.stdout.write(`${LINE}\n\n`);
 
   appendHistory({ task, tokens: totalTokens, risk: risk.level, model: modelLine });
+
+  if (risk.level === 'HIGH' || risk.level === 'CRITICAL') {
+    const splitArgs = [task];
+    if (filePaths.length > 0) splitArgs.push('--files', ...filePaths);
+    const result = childProcess.spawnSync(
+      process.execPath,
+      [path.join(__dirname, 'split.js'), ...splitArgs],
+      { encoding: 'utf8' }
+    );
+    if (result.stdout) process.stdout.write(result.stdout);
+  }
 }
 
 main().catch((err) => {

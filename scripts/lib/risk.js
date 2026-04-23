@@ -16,8 +16,8 @@ const COMPLEX_TASK_RE = /\b(architect|design|refactor|migrate|review|analyze|ent
 const SIMPLE_TASK_RE  = /\b(fix|typo|rename|update|bump|minor|small|simple|tweak|add\s+\w+\s+comment)\b/i;
 
 function suggestModel(tokens, thresholds, taskText) {
-  if (tokens >= thresholds.MEDIUM) return 'Sonnet 4.6';
-  if (tokens >= thresholds.HIGH)   return 'Haiku 4.5 (cost) or Sonnet 4.6 (quality)';
+  if (tokens >= thresholds.HIGH)   return 'Opus 4.7 (max capability) — or split first';
+  if (tokens >= thresholds.MEDIUM) return 'Sonnet 4.6 or Opus 4.7 (complex task)';
 
   if (!taskText) return 'Any — Haiku 4.5 (cost) or Sonnet 4.6 (quality)';
   if (COMPLEX_TASK_RE.test(taskText)) return 'Sonnet 4.6 (complex task detected)';
@@ -48,15 +48,15 @@ function classifyRisk(tokens, overrides, taskText) {
     return {
       level: 'HIGH',
       emoji: '🔴',
-      action: 'Consider splitting this task',
-      suggestedModel: 'Haiku 4.5 (cost) or Sonnet 4.6 (quality)',
+      action: 'Split recommended — run /split-task or see breakdown below',
+      suggestedModel: 'Sonnet 4.6 or Opus 4.7 (complex task)',
     };
   }
   return {
     level: 'CRITICAL',
     emoji: '🚨',
-    action: 'Split required — task will likely exceed context',
-    suggestedModel: 'Haiku 4.5 or split first',
+    action: 'Split required — see breakdown below',
+    suggestedModel: 'Opus 4.7 (max capability) — or split first',
   };
 }
 

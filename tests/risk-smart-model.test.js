@@ -18,9 +18,19 @@ const r3 = classifyRisk(100, cfg);
 assert.strictEqual(r3.level, 'LOW');
 assert.match(r3.suggestedModel, /Haiku|Sonnet/);
 
-// MEDIUM always → Sonnet regardless of task
+// MEDIUM → Sonnet or Opus 4.7
 const r4 = classifyRisk(30_000, cfg, 'fix typo');
 assert.strictEqual(r4.level, 'MEDIUM');
 assert.match(r4.suggestedModel, /Sonnet/);
+
+// HIGH → Opus 4.7 recommended
+const r5 = classifyRisk(80_000, cfg, 'analyze entire codebase');
+assert.strictEqual(r5.level, 'HIGH');
+assert.match(r5.suggestedModel, /Opus/);
+
+// CRITICAL → Opus 4.7 recommended
+const r6 = classifyRisk(150_000, cfg, 'huge task');
+assert.strictEqual(r6.level, 'CRITICAL');
+assert.match(r6.suggestedModel, /Opus/);
 
 console.log('✅ risk-smart-model.test.js passed');

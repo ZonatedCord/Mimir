@@ -37,12 +37,19 @@ const outBadFile = execSync(
 assert.match(outBadFile, /MIMIR PREFLIGHT/);
 assert.match(outBadFile, /⚠/);
 
-// No arguments → non-zero exit
-try {
-  execSync('node scripts/estimate.js 2>&1', { env: NO_KEY });
-  assert.fail('Should have thrown');
-} catch (err) {
-  assert.ok(err.status !== 0, 'Expected non-zero exit code');
+// No arguments → exit 0 + help text
+const outNoArgs = execSync('node scripts/estimate.js', { env: NO_KEY }).toString();
+assert.match(outNoArgs, /MIMIR/,          'missing mimir in help');
+assert.match(outNoArgs, /Usage/,          'missing Usage in help');
+assert.match(outNoArgs, /split-task/,     'missing split-task in help');
+
+// HIGH/CRITICAL risk task → auto-split appended
+const outHigh = execSync(
+  'node scripts/estimate.js "analyze every file in the entire codebase and refactor all modules and update all tests and generate full documentation"',
+  { env: NO_KEY }
+).toString();
+if (/Risk:\s+(HIGH|CRITICAL)/.test(outHigh)) {
+  assert.match(outHigh, /MIMIR SPLIT/, 'HIGH/CRITICAL should include auto-split output');
 }
 
 console.log('✅ estimate.test.js passed');
