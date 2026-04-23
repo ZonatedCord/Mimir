@@ -1,4 +1,4 @@
-# ⚡ Mimir
+# Mimir
 
 > *In Norse mythology, Mimir guards the Well of Wisdom. Odin consulted Mimir before every major decision.*
 >
@@ -26,6 +26,7 @@ Mimir fills that gap. Run `/estimate-task` before you run the task. Get a risk a
 
 ## Demo
 
+**Basic estimate:**
 ```
 /estimate-task "analyze every TypeScript file in the repo and refactor all components to use the new API design, update all tests, and document every public function"
 ```
@@ -38,6 +39,27 @@ Mimir fills that gap. Run `/estimate-task` before you run the task. Get a risk a
   Suggested model:      Sonnet 4.6
   Context headroom:     91%
   Action:               Proceed with caution — limit files read
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**With real files:**
+```
+/estimate-task "refactor authentication logic" --files src/auth.ts src/middleware.ts src/utils.ts
+```
+
+```
+⚡ MIMIR PREFLIGHT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Task tokens (exact):   47
+  Files tokens:          ~8,203
+    auth.ts              ~4,100
+    middleware.ts        ~2,890
+    utils.ts             ~1,213
+  Total tokens:          ~8,250
+  Risk:                 LOW ✅
+  Suggested model:      Any — Haiku 4.5 (cost) or Sonnet 4.6 (quality)
+  Context headroom:     96%
+  Action:               Proceed
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
@@ -90,7 +112,10 @@ Estimates the token cost and risk level of a task before running it.
 
 ```
 /estimate-task "<describe what you want Claude to do>"
+/estimate-task "<task description>" --files path/to/file1.ts path/to/file2.ts
 ```
+
+Pass `--files` to include the actual content of files Claude will read. This gives a much more accurate estimate than task description alone.
 
 **Examples:**
 
@@ -260,14 +285,14 @@ This means: a short description like *"refactor all 500 TypeScript files"* will 
 
 **What this means in practice:**
 
-| Task type | Mimir accuracy |
-|-----------|---------------|
-| Prompt-heavy tasks (long descriptions, detailed context) | Good — correlates with actual cost |
-| File-heavy tasks (short description, reads many files) | Underestimates — use `/split-task` as a forcing function |
-| Conversational tasks | Good |
-| Codebase-wide refactors | Underestimates |
+| Task type | Without `--files` | With `--files` |
+|-----------|------------------|----------------|
+| Prompt-heavy tasks (long descriptions) | Good | — |
+| File-heavy tasks (reads many files) | Underestimates | Accurate |
+| Conversational tasks | Good | — |
+| Codebase-wide refactors | Underestimates | Accurate |
 
-**V2 will add `--files` flag** — pass specific files and Mimir will read and count them as part of the estimate.
+Use `--files` whenever Claude will read specific files as part of the task.
 
 ### Other limitations
 
@@ -298,19 +323,22 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 
 ## Roadmap
 
-### V1 — Current
+### V1 — Complete
 - `/estimate-task` with Anthropic API + heuristic fallback
 - `/split-task` with heuristic pattern matching
 - Zero-dependency install
 - MIT license
 
-### V2 — Smarter estimation
-- `--files` flag: pass file paths to include actual file content in token count
-- Multi-model support: configurable thresholds for Opus 4.7, Haiku 4.5
+### V2 — Current
+- `--files` flag: include actual file content in token estimate
+- Multi-model support: Opus 4.7, Haiku 4.5, Sonnet 4.6 recommendations
+- MODELS export for downstream tooling
+
+### V3 — Next
 - `.mimir.json` per-project config (custom thresholds, default model)
 - Superpowers plugin wrapper for one-command install
 
-### V3 — Context awareness
+### V4 — Context awareness
 - Reads `git diff` to estimate upcoming task size automatically
 - Pre-task hook integration with Claude Code
 - Local token usage history
