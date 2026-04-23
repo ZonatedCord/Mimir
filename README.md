@@ -8,6 +8,7 @@
 
 Before you run an expensive task, Mimir estimates how many tokens it will consume and classifies the risk — so you can decide whether to split, reduce, or reschedule before hitting your usage limit mid-execution.
 
+[![CI](https://github.com/ZonatedCord/Mimir/actions/workflows/test.yml/badge.svg)](https://github.com/ZonatedCord/Mimir/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18-green)](https://nodejs.org)
 [![Zero deps](https://img.shields.io/badge/dependencies-0-brightgreen)](package.json)
@@ -162,6 +163,26 @@ Suggests how to break a large task into smaller, safer sub-tasks.
 
 ---
 
+### `/mimir-config`
+
+Shows active configuration: context window, risk thresholds, default model, and config source (`.mimir.json` or built-in defaults).
+
+```
+/mimir-config
+```
+
+```
+⚡ MIMIR CONFIG
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Source:           defaults (no .mimir.json found)
+  Context window:   200,000 tokens
+  Thresholds:       LOW <20k · MEDIUM <60k · HIGH <120k · CRITICAL ≥120k
+  Default model:    (none — use risk-based suggestion)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+---
+
 ### `/mimir-help`
 
 Shows all available commands and the recommended workflow.
@@ -261,11 +282,13 @@ mimir/
 │   └── commands/
 │       ├── estimate-task.md     # /estimate-task slash command
 │       ├── split-task.md        # /split-task slash command
+│       ├── mimir-config.md      # /mimir-config slash command
 │       ├── mimir-help.md        # /mimir-help slash command
 │       └── mimir-update.md      # /mimir-update slash command
 ├── scripts/
 │   ├── estimate.js              # entry point: reads argv, calls lib, prints output
 │   ├── split.js                 # entry point: reads argv, detects split points, prints output
+│   ├── config-show.js           # entry point: prints active config
 │   └── lib/
 │       ├── tokenizer.js         # token counting: API path + heuristic fallback
 │       └── risk.js              # risk thresholds + classification

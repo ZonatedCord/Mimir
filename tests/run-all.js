@@ -9,6 +9,7 @@ const tests = [
   'tests/config.test.js',
   'tests/estimate.test.js',
   'tests/split.test.js',
+  'tests/config-show.test.js',
 ];
 
 for (const test of tests) {

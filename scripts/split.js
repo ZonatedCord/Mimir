@@ -10,6 +10,7 @@ const ACTION_VERBS = [
   'analyze', 'refactor', 'test', 'document', 'review',
   'update', 'fix', 'add', 'remove', 'migrate', 'audit',
 ];
+const FILE_EXT_RE = /\b((?:\.{0,2}\/)?(?:[\w-]+\/)*[\w.-]+\.(?:ts|tsx|js|jsx|py|go|rs|java|cs|rb|vue|svelte|css|scss|json|yaml|yml))\b/g;
 
 function parseArgs(argv) {
   const filesIdx = argv.indexOf('--files');
@@ -28,34 +29,80 @@ function readFile(filePath) {
   }
 }
 
+function extractFilePaths(task) {
+  const found = [];
+  let m;
+  const re = new RegExp(FILE_EXT_RE.source, 'g');
+  while ((m = re.exec(task)) !== null) {
+    if (!found.includes(m[1])) found.push(m[1]);
+  }
+  return found;
+}
+
+function detectNumberedList(task) {
+  const startsWithNumber = /^\s*\d+[.)]\s/.test(task);
+  const innerNumbers     = (task.match(/\s\d+[.)]\s/g) || []).length;
+  if (!startsWithNumber && innerNumbers < 2) return null;
+  const parts = task.split(/(?:^|\s+)\d+[.)]\s+/).map(p => p.trim()).filter(p => p.length > 5);
+  return parts.length >= 2 ? parts : null;
+}
+
 function detectSplitPoints(task) {
-  // Priority 1: explicit conjunctions
+  // Priority 1: numbered list (1. item 2. item)
+  const numbered = detectNumberedList(task);
+  if (numbered) {
+    return { parts: numbered, tip: 'split by module/feature, not by file type' };
+  }
+
+  // Priority 2: explicit conjunctions
   const conjParts = task.split(/\s*,?\s+(?:and then|then|and also)\s+/i);
   if (conjParts.length > 1) {
-    return conjParts.map(p => p.trim()).filter(p => p.length > 10);
+    return {
+      parts: conjParts.map(p => p.trim()).filter(p => p.length > 10),
+      tip: 'split by module/feature, not by file type',
+    };
   }
 
-  // Priority 2: multiple distinct action verbs
+  // Priority 3: file paths (2+ distinct files → split per file)
+  const filePaths = extractFilePaths(task);
+  if (filePaths.length >= 2) {
+    const taskBase = task.replace(new RegExp(FILE_EXT_RE.source, 'g'), '').replace(/\s{2,}/g, ' ').trim();
+    return {
+      parts: filePaths.map(fp => `${taskBase || 'Task'} — ${fp}`),
+      tip: 'each file is a natural scope boundary',
+    };
+  }
+
+  // Priority 4: multiple distinct action verbs
   const found = ACTION_VERBS.filter(v => new RegExp(`\\b${v}\\b`, 'i').test(task));
   if (found.length >= 2) {
-    return found.map(v => {
-      const match = task.match(new RegExp(`(${v}[^,\\.;]{5,60})`, 'i'));
-      return match ? match[1].trim() : `${v} (as described)`;
-    });
+    return {
+      parts: found.map(v => {
+        const match = task.match(new RegExp(`(${v}[^,\\.;]{5,60})`, 'i'));
+        return match ? match[1].trim() : `${v} (as described)`;
+      }),
+      tip: 'split by module/feature, not by file type',
+    };
   }
 
-  // Priority 3: broad scope → split into phases
+  // Priority 5: broad scope → split into phases
   if (/\b(all|every|entire|whole|complete)\b/i.test(task)) {
     const phase1 = task.replace(/\b(all|every|entire|whole)\b/gi, 'first batch of').trim();
     const phase2 = task.replace(/\b(all|every|entire|whole)\b/gi, 'remaining').trim();
-    return [phase1, `${phase2} (validate first batch before starting)`];
+    return {
+      parts: [phase1, `${phase2} (validate first batch before starting)`],
+      tip: 'split by module/feature, not by file type',
+    };
   }
 
-  // Fallback: research + implement
-  return [
-    `Map scope: ${task}`,
-    `Implement: ${task} (using scope map from step 1)`,
-  ];
+  // Fallback: scope map + implement
+  return {
+    parts: [
+      `Map scope: ${task}`,
+      `Implement: ${task} (using scope map from step 1)`,
+    ],
+    tip: 'split by module/feature, not by file type',
+  };
 }
 
 async function main() {
@@ -67,7 +114,7 @@ async function main() {
   }
 
   const cfg   = loadConfig();
-  const parts = detectSplitPoints(task);
+  const { parts, tip } = detectSplitPoints(task);
 
   let fileTokens = 0;
   const fileResults = [];
@@ -108,7 +155,7 @@ async function main() {
     process.stdout.write(`     → ${risk.level} ${risk.emoji} (~${totalTokens.toLocaleString()} tokens) · ${modelHint}\n`);
   }
 
-  process.stdout.write(`  Tip: split by module/feature, not by file type\n`);
+  process.stdout.write(`  Tip: ${tip}\n`);
   process.stdout.write(`${LINE}\n\n`);
 }
 

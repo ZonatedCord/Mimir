@@ -41,6 +41,24 @@ const out4 = execSync(
 ).toString();
 assert.match(out4, /⚠/);
 
+// Numbered list → splits on items
+const out5 = execSync(
+  'node scripts/split.js "1. analyze TypeScript files 2. refactor auth module 3. update tests"',
+  { env: NO_KEY }
+).toString();
+assert.match(out5, /1\./);
+assert.match(out5, /2\./);
+assert.match(out5, /3\./);
+
+// File paths → splits per file
+const out6 = execSync(
+  'node scripts/split.js "fix bug in src/auth.ts and update src/auth.test.ts"',
+  { env: NO_KEY }
+).toString();
+assert.match(out6, /src\/auth\.ts/);
+assert.match(out6, /src\/auth\.test\.ts/);
+assert.match(out6, /scope boundary/);
+
 // No arguments → non-zero exit
 try {
   execSync('node scripts/split.js 2>&1', { env: NO_KEY });
