@@ -27,39 +27,49 @@ Mimir fills that gap. Run `/mimir` before you run the task. Get a risk assessmen
 
 ## Demo
 
-**Basic estimate:**
+**Basic estimate (always includes system overhead + CLAUDE.md):**
 ```
-/mimir "analyze every TypeScript file in the repo and refactor all components to use the new API design, update all tests, and document every public function"
-```
-
-```
-⚡ MIMIR PREFLIGHT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Input tokens (exact):  18,432
-  Risk:                 MEDIUM ⚠️
-  Suggested model:      Sonnet 4.6
-  Context headroom:     91%
-  Action:               Proceed with caution — limit files read
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-```
-
-**With real files:**
-```
-/mimir "refactor authentication logic" --files src/auth.ts src/middleware.ts src/utils.ts
+/mimir "refactor authentication logic"
 ```
 
 ```
 ⚡ MIMIR PREFLIGHT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Task tokens (exact):   47
-  Files tokens:          ~8,203
-    auth.ts              ~4,100
-    middleware.ts        ~2,890
-    utils.ts             ~1,213
-  Total tokens:          ~8,250
+  Task (heuristic):           ~5
+  System overhead:            ~3,000  (prompt + command + hooks)
+  ~/.claude/CLAUDE.md:        ~1,432
+  .claude/CLAUDE.md:          ~380
+  ─────────────────────────────────
+  Total:                      ~4,817
+
   Risk:                 LOW ✅
-  Suggested model:      Any — Haiku 4.5 (cost) or Sonnet 4.6 (quality)
-  Context headroom:     96%
+  Suggested model:      Sonnet 4.6 (complex task detected)
+  Context headroom:     98%
+  Action:               Proceed
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+**With files + conversation history:**
+```
+/mimir "refactor authentication logic" --files src/auth.ts src/middleware.ts --turns 10
+```
+
+```
+⚡ MIMIR PREFLIGHT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Task (heuristic):           ~5
+  System overhead:            ~3,000  (prompt + command + hooks)
+  ~/.claude/CLAUDE.md:        ~1,432
+  .claude/CLAUDE.md:          ~380
+  auth.ts:                    ~4,100
+  middleware.ts:              ~2,890
+  Conversation (10 turns):    ~8,000  (~800 tok/turn)
+  ─────────────────────────────────
+  Total:                      ~19,807
+
+  Risk:                 LOW ✅
+  Suggested model:      Sonnet 4.6 (complex task detected)
+  Context headroom:     90%
   Action:               Proceed
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
@@ -206,6 +216,7 @@ Shows active configuration: context window, risk thresholds, default model, and 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Source:           defaults (no .mimir.json found)
   Context window:   200,000 tokens
+  System overhead:  3,000 tokens
   Thresholds:       LOW <20k · MEDIUM <60k · HIGH <120k · CRITICAL ≥120k
   Default model:    (none — use risk-based suggestion)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -284,12 +295,12 @@ Accuracy: **±15%**. Sufficient for risk classification.
 
 Risk levels are calculated against the **Sonnet 4.6 context window (200,000 tokens)**:
 
-| Level | Input tokens | Emoji | Action | Suggested model |
+| Level | Total tokens | Emoji | Action | Suggested model |
 |-------|-------------|-------|--------|----------------|
-| LOW | < 20,000 | ✅ | Proceed | Sonnet 4.6 |
+| LOW | < 20,000 | ✅ | Proceed | Haiku 4.5 (simple) or Sonnet 4.6 (complex) |
 | MEDIUM | 20,000–60,000 | ⚠️ | Proceed with caution | Sonnet 4.6 |
-| HIGH | 60,000–120,000 | 🔴 | Consider splitting | Haiku 4.5 or Sonnet 4.6 |
-| CRITICAL | > 120,000 | 🚨 | Split required | Haiku 4.5 |
+| HIGH | 60,000–120,000 | 🔴 | Split recommended — auto-split shown | Sonnet 4.6 or Opus 4.7 |
+| CRITICAL | > 120,000 | 🚨 | Split required — auto-split shown | Opus 4.7 or split first |
 
 These thresholds assume a **2–3× output multiplier** — a task that reads 20k tokens of input will typically generate 40–60k tokens of total context by the time it completes.
 
@@ -326,14 +337,20 @@ mimir/
 │   ├── history-show.js          # entry point: prints recent estimate history
 │   └── lib/
 │       ├── tokenizer.js         # token counting: API path + heuristic fallback
-│       ├── risk.js              # risk thresholds + classification + smart model
+│       ├── risk.js              # risk thresholds + classification + Opus/Sonnet/Haiku model hints
 │       ├── config.js            # .mimir.json loader + validation
+│       ├── context.js           # CLAUDE.md scanner + system overhead + conversation turns
 │       └── history.js           # append/load ~/.mimir-history.json
 ├── tests/
 │   ├── risk.test.js
+│   ├── risk-smart-model.test.js
 │   ├── tokenizer.test.js
+│   ├── config.test.js
+│   ├── context.test.js
 │   ├── estimate.test.js
 │   ├── split.test.js
+│   ├── config-show.test.js
+│   ├── history.test.js
 │   └── run-all.js
 ├── docs/
 │   └── superpowers/
@@ -347,12 +364,14 @@ Each component has a single responsibility. The library modules (`lib/`) are pur
 ### Data flow
 
 ```
-user types /mimir "task description"
+user types /mimir "task description" [--files ...] [--git-diff] [--turns N]
     → Claude Code reads .claude/commands/mimir.md
-        → runs: node ~/.claude/mimir/scripts/estimate.js "task description"
-            → tokenizer.js: try count_tokens API → fallback to heuristic
-            → risk.js: classify by threshold
-            → print 5-line report to stdout
+        → runs: node ~/.claude/mimir/scripts/estimate.js "task description" [flags]
+            → tokenizer.js: count_tokens API → fallback to heuristic (task text)
+            → context.js:   scan CLAUDE.md files + system overhead + turns
+            → risk.js:      classify total by threshold → Haiku/Sonnet/Opus hint
+            → print labeled breakdown per source → total → risk → action
+            → if HIGH or CRITICAL: auto-run split.js and append breakdown
 ```
 
 ---
@@ -361,7 +380,7 @@ user types /mimir "task description"
 
 1. **Mimir must cost less than 1% of the task it checks** — the checker cannot be more expensive than the thing it checks.
 2. **Zero required dependencies** — `node script.js` works out of the box. No npm install, no package lock drama.
-3. **Output ≤ 5 lines** — a preflight check that produces a long report defeats the purpose.
+3. **Output is proportional** — simple tasks show a compact breakdown. Complex estimates (HIGH/CRITICAL) auto-append the split suggestions. Never more than needed.
 4. **Heuristics are always disclosed** — the output explicitly says `(heuristic)` or `(exact)`. No silent approximations.
 5. **Commands are slash-first, not CLI-first** — the UX is built for Claude Code, not terminal power users.
 6. **Logic lives in scripts, not in markdown** — the `.md` command files are thin wrappers. All logic is in testable `.js` files.
@@ -418,8 +437,13 @@ npm test
 ```
 ✅ risk.test.js passed
 ✅ tokenizer.test.js passed
+✅ config.test.js passed
 ✅ estimate.test.js passed
 ✅ split.test.js passed
+✅ config-show.test.js passed
+✅ history.test.js passed
+✅ risk-smart-model.test.js passed
+✅ context.test.js passed
 
 ✅ All tests passed
 ```
@@ -458,17 +482,30 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 - Fixed prompt-passthrough bug in slash commands
 - Improved split heuristics (numbered lists, file path detection)
 
-### V6 — Current
+### V6 — Complete
 - `--git-diff` flag: includes current git diff tokens in estimate
 - `/mimir-diff` command: instant git diff preflight
 - `/mimir-history` command: shows recent estimate history (~/.mimir-history.json)
 - Smart model recommendation: keyword-aware (complex tasks → Sonnet, simple → Haiku)
 - Pre-task hook integration with Claude Code (see below)
 
-### V7 — Planned
-- Opus 4.7 thresholds and context window support
-- Auto-split: run `/split-task` automatically when estimate exceeds threshold
-- Export history to CSV
+### V7 — Complete
+- Renamed `/estimate-task` → `/mimir` for naming coherence
+- Opus 4.7 in model suggestions: HIGH → Sonnet/Opus, CRITICAL → Opus 4.7
+- Auto-split: HIGH/CRITICAL risk automatically appends `/split-task` breakdown
+- Empty `/mimir` shows help instead of erroring
+
+### V8 — Current
+- Full context overhead in every estimate: system prompt, CLAUDE.md files, conversation turns
+- `--turns N` flag: count N conversation turns at ~800 tokens/turn
+- CLAUDE.md auto-scan: reads `~/.claude/CLAUDE.md` + project + parent directories
+- `systemOverhead` key in `.mimir.json` (default: 3,000 tokens)
+- Labeled per-source breakdown in output — every token source identified
+- New `scripts/lib/context.js` module
+
+### V9 — Planned
+- Export history to CSV (`/mimir-history --csv`)
+- Smarter system overhead: auto-detect and count hook files directly
 
 ---
 
@@ -498,7 +535,7 @@ Mimir is intentionally minimal. Before adding a feature, ask: does this violate 
 Good contributions:
 - Improved heuristics (better content detection, more accurate ratios)
 - More split patterns for `/split-task`
-- Additional model support (Opus 4.7, Haiku 4.5 thresholds)
+- Better system overhead detection (auto-read hook files)
 - Bug fixes
 
 Not in scope for V1:
