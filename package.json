@@ -1,0 +1,9 @@
+{
+  "name": "mimir",
+  "version": "0.1.0",
+  "description": "Claude Code preflight checker — estimate token cost and risk before running expensive tasks",
+  "license": "MIT",
+  "scripts": {
+    "test": "node tests/run-all.js"
+  }
+}
