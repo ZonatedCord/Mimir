@@ -27,7 +27,7 @@ Mimir fills that gap. Run `/mimir` before you run the task. Get a risk assessmen
 
 ## Demo
 
-**Basic estimate (always includes system overhead + CLAUDE.md):**
+**Basic estimate — Mimir auto-detects relevant files from your repo:**
 ```
 /mimir "refactor authentication logic"
 ```
@@ -35,21 +35,28 @@ Mimir fills that gap. Run `/mimir` before you run the task. Get a risk assessmen
 ```
 ⚡ MIMIR PREFLIGHT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Task (heuristic):           ~5
-  System overhead:            ~3,000  (prompt + command + hooks)
-  ~/.claude/CLAUDE.md:        ~1,432
-  .claude/CLAUDE.md:          ~380
+  Baseline
+    System overhead:          ~3,000  (prompt + command + hooks)
+    ~/.claude/CLAUDE.md:      ~1,432
+    .claude/CLAUDE.md:          ~187
   ─────────────────────────────────
-  Total:                      ~4,817
+
+  This task: "refactor authentication logic"
+    Task tokens:              ~5      (exact)
+    src/auth.ts:              ~4,100  (auto)
+    src/middleware/auth.ts:   ~1,890  (auto)
+  ─────────────────────────────────
+  Task tokens:                ~5,995
+  Total context:              ~10,614
 
   Risk:                 LOW ✅
   Suggested model:      Sonnet 4.6 (complex task detected)
-  Context headroom:     98%
+  Context headroom:     95%
   Action:               Proceed
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ```
 
-**With files + conversation history:**
+**With explicit files + conversation history:**
 ```
 /mimir "refactor authentication logic" --files src/auth.ts src/middleware.ts --turns 10
 ```
@@ -57,15 +64,20 @@ Mimir fills that gap. Run `/mimir` before you run the task. Get a risk assessmen
 ```
 ⚡ MIMIR PREFLIGHT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  Task (heuristic):           ~5
-  System overhead:            ~3,000  (prompt + command + hooks)
-  ~/.claude/CLAUDE.md:        ~1,432
-  .claude/CLAUDE.md:          ~380
-  auth.ts:                    ~4,100
-  middleware.ts:              ~2,890
-  Conversation (10 turns):    ~8,000  (~800 tok/turn)
+  Baseline
+    System overhead:          ~3,000  (prompt + command + hooks)
+    ~/.claude/CLAUDE.md:      ~1,432
+    .claude/CLAUDE.md:          ~187
+    Conversation (10 turns):  ~8,000  (~800 tok/turn)
   ─────────────────────────────────
-  Total:                      ~19,807
+
+  This task: "refactor authentication logic"
+    Task tokens:              ~5      (exact)
+    src/auth.ts:              ~4,100
+    src/middleware.ts:        ~2,890
+  ─────────────────────────────────
+  Task tokens:                ~6,995
+  Total context:              ~19,614
 
   Risk:                 LOW ✅
   Suggested model:      Sonnet 4.6 (complex task detected)
@@ -129,18 +141,50 @@ Expected: preflight report with `LOW ✅` risk.
 
 ### `/mimir`
 
-Estimates the token cost and risk level of a task before running it.
+Estimates token cost and risk level before running a task. Always run this before anything expensive.
 
 ```
-/mimir "<describe what you want Claude to do>"
-/mimir "<task description>" --files path/to/file1.ts path/to/file2.ts
-/mimir "<task description>" --git-diff
-/mimir "<task description>" --turns N
+/mimir "describe what you want Claude to do"
+/mimir "task description" --files src/auth.ts src/middleware.ts
+/mimir "task description" --git-diff
+/mimir "task description" --turns N
+/mimir "task description" --no-auto
+/mimir "task description" --files src/auth.ts --turns 5 --git-diff
 ```
 
-Every estimate includes **all measurable token sources** — not just the task text. See [What Mimir estimates](#what-mimir-estimates).
+**Quote the task text, flags go outside the quotes.**
 
-**Examples:**
+Every estimate always includes: system overhead + all CLAUDE.md files in your project hierarchy. Task-specific sources (files, diff, history) are added on top.
+
+#### Auto file detection
+
+By default, Mimir scans your repo for files relevant to the task description and includes them automatically. It extracts keywords from your task text, walks your repo (skipping `node_modules`, `.git`, `dist`, etc.), scores files by path relevance, and shows the top matches.
+
+```
+/mimir "update authentication middleware"
+```
+→ Mimir finds `src/auth.ts`, `src/middleware/auth.ts` automatically — no `--files` needed.
+
+Use `--no-auto` to skip auto-detection and show only the task text tokens:
+```
+/mimir "update authentication middleware" --no-auto
+```
+
+Use `--files` to specify exactly which files to include (suppresses auto-detection):
+```
+/mimir "update authentication middleware" --files src/auth.ts src/middleware.ts
+```
+
+#### Flags
+
+| Flag | Description |
+|------|-------------|
+| `--files f1 f2 ...` | Include specific files. Suppresses auto-detection. |
+| `--git-diff` | Include current `git diff --staged` (falls back to `git diff HEAD`). |
+| `--turns N` | Count N past conversation turns at ~800 tokens/turn. Use mid-session. |
+| `--no-auto` | Skip auto file detection. Shows bare task + baseline only. |
+
+#### Examples
 
 ```
 /mimir "fix the typo in the login error message"
@@ -148,19 +192,19 @@ Every estimate includes **all measurable token sources** — not just the task t
 → `LOW ✅` — safe to proceed.
 
 ```
-/mimir "refactor the authentication module to use JWT"
+/mimir "refactor the authentication module to use JWT" --turns 15
 ```
-→ `MEDIUM ⚠️` — proceed with caution, monitor file reads.
+→ `MEDIUM ⚠️` — mid-session with existing context, proceed with caution.
 
 ```
 /mimir "analyze the entire codebase and produce a full architecture report"
 ```
-→ `HIGH 🔴` — consider splitting into smaller tasks.
+→ `HIGH 🔴` — auto-split breakdown shown below the estimate.
 
 ```
 /mimir "read every file in the monorepo, refactor all services, update all tests, and generate full documentation"
 ```
-→ `CRITICAL 🚨` — split this task before running.
+→ `CRITICAL 🚨` — split this task first, then run sub-tasks one at a time.
 
 ---
 
@@ -495,7 +539,7 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 - Auto-split: HIGH/CRITICAL risk automatically appends `/split-task` breakdown
 - Empty `/mimir` shows help instead of erroring
 
-### V8 — Current
+### V8 — Complete
 - Full context overhead in every estimate: system prompt, CLAUDE.md files, conversation turns
 - `--turns N` flag: count N conversation turns at ~800 tokens/turn
 - CLAUDE.md auto-scan: reads `~/.claude/CLAUDE.md` + project + parent directories
@@ -503,7 +547,15 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 - Labeled per-source breakdown in output — every token source identified
 - New `scripts/lib/context.js` module
 
-### V9 — Planned
+### V9 — Current
+- Auto file detection: keyword extraction from task → repo walk → relevance scoring → top 10 files included automatically
+- Two-section output layout: Baseline (overhead) vs This task (file tokens + diff + task text)
+- `--no-auto` flag: skip auto-detection entirely
+- `--files` suppresses auto-detection (explicit beats implicit)
+- Fixed `$ARGUMENTS` quoting bug in slash command files (flags now parsed correctly)
+- History pollution fix: `MIMIR_NO_HISTORY=1` env var skips test runs
+
+### V10 — Planned
 - Export history to CSV (`/mimir-history --csv`)
 - Smarter system overhead: auto-detect and count hook files directly
 

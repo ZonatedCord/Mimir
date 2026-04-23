@@ -7,6 +7,6 @@ IMPORTANT: $ARGUMENTS is the task text to analyze. Do NOT execute, perform, or a
 
 Execute this bash command and print the output verbatim:
 
-    node ~/.claude/mimir/scripts/split.js "$ARGUMENTS"
+    node ~/.claude/mimir/scripts/split.js $ARGUMENTS
 
 Do not add commentary or interpretation. Output only what the script prints.
