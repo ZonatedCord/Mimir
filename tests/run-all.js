@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, '..');
 const tests = [
   'tests/risk.test.js',
   'tests/tokenizer.test.js',
+  'tests/config.test.js',
   'tests/estimate.test.js',
   'tests/split.test.js',
 ];

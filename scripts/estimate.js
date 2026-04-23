@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { estimateTokens, countTokensViaAPI } = require('./lib/tokenizer');
 const { classifyRisk, contextHeadroom }     = require('./lib/risk');
+const { loadConfig }                        = require('./lib/config');
 
 const LINE = '━'.repeat(35);
 
@@ -42,6 +43,7 @@ async function main() {
     process.exit(1);
   }
 
+  const cfg = loadConfig();
   const taskResult = await countText(task, 'auto');
   const method = taskResult.method;
 
@@ -59,8 +61,8 @@ async function main() {
     }
   }
 
-  const risk     = classifyRisk(totalTokens);
-  const headroom = contextHeadroom(totalTokens);
+  const risk     = classifyRisk(totalTokens, cfg);
+  const headroom = contextHeadroom(totalTokens, cfg.contextWindow);
 
   process.stdout.write(`\n⚡ MIMIR PREFLIGHT\n`);
   process.stdout.write(`${LINE}\n`);

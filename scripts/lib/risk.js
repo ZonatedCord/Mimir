@@ -12,8 +12,10 @@ const MODELS = {
   'opus-4.7':   { label: 'Opus 4.7',   contextWindow: 200_000 },
 };
 
-function classifyRisk(tokens) {
-  if (tokens < THRESHOLDS.LOW) {
+function classifyRisk(tokens, overrides) {
+  const t  = (overrides && overrides.thresholds) ? { ...THRESHOLDS, ...overrides.thresholds } : THRESHOLDS;
+
+  if (tokens < t.LOW) {
     return {
       level: 'LOW',
       emoji: '✅',
@@ -21,7 +23,7 @@ function classifyRisk(tokens) {
       suggestedModel: 'Any — Haiku 4.5 (cost) or Sonnet 4.6 (quality)',
     };
   }
-  if (tokens < THRESHOLDS.MEDIUM) {
+  if (tokens < t.MEDIUM) {
     return {
       level: 'MEDIUM',
       emoji: '⚠️',
@@ -29,7 +31,7 @@ function classifyRisk(tokens) {
       suggestedModel: 'Sonnet 4.6',
     };
   }
-  if (tokens < THRESHOLDS.HIGH) {
+  if (tokens < t.HIGH) {
     return {
       level: 'HIGH',
       emoji: '🔴',
@@ -45,8 +47,9 @@ function classifyRisk(tokens) {
   };
 }
 
-function contextHeadroom(tokens) {
-  return Math.max(0, Math.round((1 - tokens / CONTEXT_WINDOW) * 100));
+function contextHeadroom(tokens, contextWindow) {
+  const cw = contextWindow || CONTEXT_WINDOW;
+  return Math.max(0, Math.round((1 - tokens / cw) * 100));
 }
 
 module.exports = { THRESHOLDS, CONTEXT_WINDOW, MODELS, classifyRisk, contextHeadroom };
