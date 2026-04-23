@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Claude Code preflight checker — estimate token cost and risk before running expensive tasks",
   "license": "MIT",
+  "private": true,
   "scripts": {
     "test": "node tests/run-all.js"
   }

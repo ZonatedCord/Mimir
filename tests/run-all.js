@@ -1,4 +1,7 @@
 const { execSync } = require('child_process');
+const path = require('path');
+
+const root = path.resolve(__dirname, '..');
 
 const tests = [
   'tests/risk.test.js',
@@ -8,6 +11,6 @@ const tests = [
 ];
 
 for (const test of tests) {
-  execSync(`node ${test}`, { stdio: 'inherit' });
+  execSync(`node ${path.join(root, test)}`, { stdio: 'inherit' });
 }
 console.log('\n✅ All tests passed');

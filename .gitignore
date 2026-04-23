@@ -1,3 +1,4 @@
 node_modules/
 context.md
-.DS_Store
+**/.DS_Store
+.claude/settings.local.json
