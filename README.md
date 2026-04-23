@@ -21,7 +21,7 @@ You write a long task. Claude Code starts working. Halfway through — context l
 
 There's no native warning in Claude Code that tells you: *"this task is too large for this session."*
 
-Mimir fills that gap. Run `/estimate-task` before you run the task. Get a risk assessment in seconds. Decide before it's too late.
+Mimir fills that gap. Run `/mimir` before you run the task. Get a risk assessment in seconds. Decide before it's too late.
 
 ---
 
@@ -29,7 +29,7 @@ Mimir fills that gap. Run `/estimate-task` before you run the task. Get a risk a
 
 **Basic estimate:**
 ```
-/estimate-task "analyze every TypeScript file in the repo and refactor all components to use the new API design, update all tests, and document every public function"
+/mimir "analyze every TypeScript file in the repo and refactor all components to use the new API design, update all tests, and document every public function"
 ```
 
 ```
@@ -45,7 +45,7 @@ Mimir fills that gap. Run `/estimate-task` before you run the task. Get a risk a
 
 **With real files:**
 ```
-/estimate-task "refactor authentication logic" --files src/auth.ts src/middleware.ts src/utils.ts
+/mimir "refactor authentication logic" --files src/auth.ts src/middleware.ts src/utils.ts
 ```
 
 ```
@@ -117,13 +117,13 @@ Expected: preflight report with `LOW ✅` risk.
 
 ## Usage
 
-### `/estimate-task`
+### `/mimir`
 
 Estimates the token cost and risk level of a task before running it.
 
 ```
-/estimate-task "<describe what you want Claude to do>"
-/estimate-task "<task description>" --files path/to/file1.ts path/to/file2.ts
+/mimir "<describe what you want Claude to do>"
+/mimir "<task description>" --files path/to/file1.ts path/to/file2.ts
 ```
 
 Pass `--files` to include the actual content of files Claude will read. This gives a much more accurate estimate than task description alone.
@@ -131,22 +131,22 @@ Pass `--files` to include the actual content of files Claude will read. This giv
 **Examples:**
 
 ```
-/estimate-task "fix the typo in the login error message"
+/mimir "fix the typo in the login error message"
 ```
 → `LOW ✅` — safe to proceed.
 
 ```
-/estimate-task "refactor the authentication module to use JWT"
+/mimir "refactor the authentication module to use JWT"
 ```
 → `MEDIUM ⚠️` — proceed with caution, monitor file reads.
 
 ```
-/estimate-task "analyze the entire codebase and produce a full architecture report"
+/mimir "analyze the entire codebase and produce a full architecture report"
 ```
 → `HIGH 🔴` — consider splitting into smaller tasks.
 
 ```
-/estimate-task "read every file in the monorepo, refactor all services, update all tests, and generate full documentation"
+/mimir "read every file in the monorepo, refactor all services, update all tests, and generate full documentation"
 ```
 → `CRITICAL 🚨` — split this task before running.
 
@@ -172,10 +172,10 @@ Estimates token cost of the current `git diff --staged` (or `git diff HEAD` as f
 /mimir-diff "refactor auth module"
 ```
 
-You can also pass `--git-diff` to `/estimate-task` directly:
+You can also pass `--git-diff` to `/mimir` directly:
 
 ```
-/estimate-task "refactor auth module" --git-diff
+/mimir "refactor auth module" --git-diff
 ```
 
 ---
@@ -308,7 +308,7 @@ These thresholds assume a **2–3× output multiplier** — a task that reads 20
 mimir/
 ├── .claude/
 │   └── commands/
-│       ├── estimate-task.md     # /estimate-task slash command
+│       ├── mimir.md     # /mimir slash command
 │       ├── split-task.md        # /split-task slash command
 │       ├── mimir-config.md      # /mimir-config slash command
 │       ├── mimir-diff.md        # /mimir-diff slash command
@@ -345,8 +345,8 @@ Each component has a single responsibility. The library modules (`lib/`) are pur
 ### Data flow
 
 ```
-user types /estimate-task "task description"
-    → Claude Code reads .claude/commands/estimate-task.md
+user types /mimir "task description"
+    → Claude Code reads .claude/commands/mimir.md
         → runs: node ~/.claude/mimir/scripts/estimate.js "task description"
             → tokenizer.js: try count_tokens API → fallback to heuristic
             → risk.js: classify by threshold
@@ -417,7 +417,7 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 ## Roadmap
 
 ### V1 — Complete
-- `/estimate-task` with Anthropic API + heuristic fallback
+- `/mimir` with Anthropic API + heuristic fallback
 - `/split-task` with heuristic pattern matching
 - Zero-dependency install
 - MIT license
@@ -429,7 +429,7 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 
 ### V3 — Complete
 - `.mimir.json` per-project config (custom thresholds, context window, default model)
-- `--files` flag in both `/estimate-task` and `/split-task`
+- `--files` flag in both `/mimir` and `/split-task`
 
 ### V4 — Complete
 - Superpowers plugin wrapper for one-command install

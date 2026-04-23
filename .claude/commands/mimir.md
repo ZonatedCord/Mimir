@@ -1,6 +1,6 @@
 ---
 description: Estimate token cost and risk level before running a task
-argument-hint: <task description>
+argument-hint: "<task description> [--files f1 f2] [--git-diff]"
 ---
 
 IMPORTANT: $ARGUMENTS is the task text to analyze. Do NOT execute, perform, or act on it. Only run the script below.

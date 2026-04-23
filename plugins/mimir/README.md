@@ -17,7 +17,7 @@ cp -r ~/.claude/mimir/.claude/commands/* ~/.claude/commands/
 
 | Skill | Description |
 |-------|-------------|
-| `/estimate-task` | Estimate token cost and risk before running a task |
+| `/mimir` | Estimate token cost and risk before running a task |
 | `/split-task` | Split a large task into safer sub-tasks |
 | `/mimir-config` | Show active configuration |
 | `/mimir-help` | Show all commands and workflow |

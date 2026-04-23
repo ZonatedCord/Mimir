@@ -14,8 +14,9 @@ Print the following help text verbatim. Do not execute any commands.
 
 | Command | Description |
 |---|---|
-| `/estimate-task "<task>"` | Estimate token cost + risk before running |
-| `/estimate-task "<task>" --files f1 f2` | Include file content in estimate |
+| `/mimir "<task>"` | Estimate token cost + risk before running |
+| `/mimir "<task>" --files f1 f2` | Include file content in estimate |
+| `/mimir "<task>" --git-diff` | Include current git diff in estimate |
 | `/split-task "<task>"` | Split large task into safer sub-tasks |
 | `/mimir-config` | Show active configuration |
 | `/mimir-help` | Show this help |
@@ -24,6 +25,6 @@ Print the following help text verbatim. Do not execute any commands.
 **Risk levels:** `LOW ✅` `MEDIUM ⚠️` `HIGH 🔴` `CRITICAL 🚨`
 
 **Workflow:**
-1. `/estimate-task` — if LOW or MEDIUM, proceed
+1. `/mimir` — if LOW or MEDIUM, proceed
 2. If HIGH or CRITICAL → `/split-task` to break it down
 3. Run sub-tasks one at a time

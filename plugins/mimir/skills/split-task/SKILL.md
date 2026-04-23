@@ -1,6 +1,6 @@
 ---
 name: split-task
-description: Split a large Claude Code task into safer sub-tasks to avoid context limit failures. Use when /estimate-task shows HIGH or CRITICAL risk.
+description: Split a large Claude Code task into safer sub-tasks to avoid context limit failures. Use when /mimir shows HIGH or CRITICAL risk.
 argument-hint: "<task description> [--files file1 file2 ...]"
 allowed-tools: [Bash]
 ---
