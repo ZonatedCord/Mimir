@@ -147,7 +147,10 @@ Suggests how to break a large task into smaller, safer sub-tasks.
 
 ```
 /split-task "<describe the task you want to split>"
+/split-task "<task>" --files path/to/file1.ts path/to/file2.ts
 ```
+
+With `--files`, each suggested sub-task includes the file token cost in its risk estimate.
 
 Each suggested sub-task is shown with its estimated token cost and risk level, so you can run them one at a time.
 
@@ -334,11 +337,14 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 - Multi-model support: Opus 4.7, Haiku 4.5, Sonnet 4.6 recommendations
 - MODELS export for downstream tooling
 
-### V3 — Next
-- `.mimir.json` per-project config (custom thresholds, default model)
+### V3 — Current
+- `.mimir.json` per-project config (custom thresholds, context window, default model)
+- `--files` flag in both `/estimate-task` and `/split-task`
+
+### V4 — Next
 - Superpowers plugin wrapper for one-command install
 
-### V4 — Context awareness
+### V5 — Context awareness
 - Reads `git diff` to estimate upcoming task size automatically
 - Pre-task hook integration with Claude Code
 - Local token usage history
