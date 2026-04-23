@@ -163,6 +163,34 @@ Suggests how to break a large task into smaller, safer sub-tasks.
 
 ---
 
+### `/mimir-diff`
+
+Estimates token cost of the current `git diff --staged` (or `git diff HEAD` as fallback) plus an optional task description. Useful before committing a large change.
+
+```
+/mimir-diff
+/mimir-diff "refactor auth module"
+```
+
+You can also pass `--git-diff` to `/estimate-task` directly:
+
+```
+/estimate-task "refactor auth module" --git-diff
+```
+
+---
+
+### `/mimir-history`
+
+Shows your last 10 estimate runs. Mimir logs every estimate to `~/.mimir-history.json`.
+
+```
+/mimir-history
+/mimir-history 20
+```
+
+---
+
 ### `/mimir-config`
 
 Shows active configuration: context window, risk thresholds, default model, and config source (`.mimir.json` or built-in defaults).
@@ -283,15 +311,22 @@ mimir/
 │       ├── estimate-task.md     # /estimate-task slash command
 │       ├── split-task.md        # /split-task slash command
 │       ├── mimir-config.md      # /mimir-config slash command
+│       ├── mimir-diff.md        # /mimir-diff slash command
 │       ├── mimir-help.md        # /mimir-help slash command
+│       ├── mimir-history.md     # /mimir-history slash command
 │       └── mimir-update.md      # /mimir-update slash command
+├── hooks/
+│   └── pre-task.sh              # optional UserPromptSubmit hook
 ├── scripts/
 │   ├── estimate.js              # entry point: reads argv, calls lib, prints output
 │   ├── split.js                 # entry point: reads argv, detects split points, prints output
 │   ├── config-show.js           # entry point: prints active config
+│   ├── history-show.js          # entry point: prints recent estimate history
 │   └── lib/
 │       ├── tokenizer.js         # token counting: API path + heuristic fallback
-│       └── risk.js              # risk thresholds + classification
+│       ├── risk.js              # risk thresholds + classification + smart model
+│       ├── config.js            # .mimir.json loader + validation
+│       └── history.js           # append/load ~/.mimir-history.json
 ├── tests/
 │   ├── risk.test.js
 │   ├── tokenizer.test.js
@@ -401,17 +436,44 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 - GitHub Actions CI matrix (Node 18/20/22)
 - Schema validation for `.mimir.json`
 
-### V5 — Current
+### V5 — Complete
 - `/mimir-help` command
 - `/mimir-update` command (idempotent reinstall)
+- `/mimir-config` command
 - Fixed install commands (correct URL, `rm -rf` + `mkdir -p`)
 - Fixed prompt-passthrough bug in slash commands
+- Improved split heuristics (numbered lists, file path detection)
 
-### V6 — Planned
-- Reads `git diff` to estimate upcoming task size automatically
-- Pre-task hook integration with Claude Code
-- Local token usage history
-- Smart model recommendation based on task type + budget
+### V6 — Current
+- `--git-diff` flag: includes current git diff tokens in estimate
+- `/mimir-diff` command: instant git diff preflight
+- `/mimir-history` command: shows recent estimate history (~/.mimir-history.json)
+- Smart model recommendation: keyword-aware (complex tasks → Sonnet, simple → Haiku)
+- Pre-task hook integration with Claude Code (see below)
+
+### V7 — Planned
+- Opus 4.7 thresholds and context window support
+- Auto-split: run `/split-task` automatically when estimate exceeds threshold
+- Export history to CSV
+
+---
+
+## Pre-task hook (optional)
+
+Run Mimir automatically before every Claude Code prompt. Add to `~/.claude/settings.json`:
+
+```json
+"hooks": {
+  "UserPromptSubmit": [
+    {
+      "matcher": "",
+      "hooks": [{ "type": "command", "command": "bash ~/.claude/mimir/hooks/pre-task.sh" }]
+    }
+  ]
+}
+```
+
+The hook runs `estimate.js` on your prompt and prints the preflight report as a notification — before Claude starts working. Short prompts (< 100 tokens) are skipped automatically.
 
 ---
 

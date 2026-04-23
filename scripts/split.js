@@ -148,7 +148,7 @@ async function main() {
     const part        = parts[i];
     const taskTokens  = estimateTokens(part);
     const totalTokens = taskTokens + fileTokens;
-    const risk        = classifyRisk(totalTokens, cfg);
+    const risk        = classifyRisk(totalTokens, cfg, part);
     const modelHint   = cfg.defaultModel ? cfg.defaultModel : risk.suggestedModel;
     const preview     = part.length > 55 ? `${part.substring(0, 52)}...` : part;
     process.stdout.write(`  ${i + 1}. "${preview}"\n`);

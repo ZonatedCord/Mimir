@@ -12,7 +12,20 @@ const MODELS = {
   'opus-4.7':   { label: 'Opus 4.7',   contextWindow: 200_000 },
 };
 
-function classifyRisk(tokens, overrides) {
+const COMPLEX_TASK_RE = /\b(architect|design|refactor|migrate|review|analyze|entire|system|full|all|every|audit|restructure)\b/i;
+const SIMPLE_TASK_RE  = /\b(fix|typo|rename|update|bump|minor|small|simple|tweak|add\s+\w+\s+comment)\b/i;
+
+function suggestModel(tokens, thresholds, taskText) {
+  if (tokens >= thresholds.MEDIUM) return 'Sonnet 4.6';
+  if (tokens >= thresholds.HIGH)   return 'Haiku 4.5 (cost) or Sonnet 4.6 (quality)';
+
+  if (!taskText) return 'Any — Haiku 4.5 (cost) or Sonnet 4.6 (quality)';
+  if (COMPLEX_TASK_RE.test(taskText)) return 'Sonnet 4.6 (complex task detected)';
+  if (SIMPLE_TASK_RE.test(taskText))  return 'Haiku 4.5 (simple task detected)';
+  return 'Any — Haiku 4.5 (cost) or Sonnet 4.6 (quality)';
+}
+
+function classifyRisk(tokens, overrides, taskText) {
   const t  = (overrides && overrides.thresholds) ? { ...THRESHOLDS, ...overrides.thresholds } : THRESHOLDS;
 
   if (tokens < t.LOW) {
@@ -20,7 +33,7 @@ function classifyRisk(tokens, overrides) {
       level: 'LOW',
       emoji: '✅',
       action: 'Proceed',
-      suggestedModel: 'Any — Haiku 4.5 (cost) or Sonnet 4.6 (quality)',
+      suggestedModel: suggestModel(tokens, t, taskText),
     };
   }
   if (tokens < t.MEDIUM) {

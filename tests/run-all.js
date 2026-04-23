@@ -10,6 +10,8 @@ const tests = [
   'tests/estimate.test.js',
   'tests/split.test.js',
   'tests/config-show.test.js',
+  'tests/history.test.js',
+  'tests/risk-smart-model.test.js',
 ];
 
 for (const test of tests) {

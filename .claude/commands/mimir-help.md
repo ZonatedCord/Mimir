@@ -14,7 +14,11 @@ Print the following help text verbatim. Do not execute any commands or add comme
 |---|---|
 | `/estimate-task "<task>"` | Estimate token cost + risk before running |
 | `/estimate-task "<task>" --files f1 f2` | Include file content in estimate |
+| `/estimate-task "<task>" --git-diff` | Include current git diff in estimate |
 | `/split-task "<task>"` | Split large task into safer sub-tasks |
+| `/mimir-diff` | Estimate token cost of current git diff |
+| `/mimir-config` | Show active configuration |
+| `/mimir-history` | Show recent estimate history |
 | `/mimir-help` | Show this help |
 | `/mimir-update` | Update Mimir to latest version |
 

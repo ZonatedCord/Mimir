@@ -1,19 +1,35 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
+const fs           = require('fs');
+const path         = require('path');
+const childProcess = require('child_process');
 const { estimateTokens, countTokensViaAPI } = require('./lib/tokenizer');
 const { classifyRisk, contextHeadroom }     = require('./lib/risk');
 const { loadConfig }                        = require('./lib/config');
+const { appendHistory }                     = require('./lib/history');
 
 const LINE = '━'.repeat(35);
 
 function parseArgs(argv) {
-  const filesIdx = argv.indexOf('--files');
-  if (filesIdx === -1) return { task: argv.join(' ').trim(), filePaths: [] };
+  const gitDiffIdx = argv.indexOf('--git-diff');
+  const filesIdx   = argv.indexOf('--files');
+  const baseArgv   = argv.filter(a => a !== '--git-diff');
+  const fi         = baseArgv.indexOf('--files');
+  if (fi === -1) return { task: baseArgv.join(' ').trim(), filePaths: [], useGitDiff: gitDiffIdx !== -1 };
   return {
-    task: argv.slice(0, filesIdx).join(' ').trim(),
-    filePaths: argv.slice(filesIdx + 1),
+    task:       baseArgv.slice(0, fi).join(' ').trim(),
+    filePaths:  baseArgv.slice(fi + 1),
+    useGitDiff: gitDiffIdx !== -1,
   };
+}
+
+function getGitDiff() {
+  try {
+    const staged = childProcess.execSync('git diff --staged', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+    if (staged.trim()) return staged;
+    return childProcess.execSync('git diff HEAD', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+  } catch {
+    return '';
+  }
 }
 
 function readFile(filePath) {
@@ -36,10 +52,10 @@ async function countText(text, method) {
 }
 
 async function main() {
-  const { task, filePaths } = parseArgs(process.argv.slice(2));
+  const { task, filePaths, useGitDiff } = parseArgs(process.argv.slice(2));
 
   if (!task) {
-    process.stderr.write('Usage: node estimate.js "<task>" [--files file1 file2 ...]\n');
+    process.stderr.write('Usage: node estimate.js "<task>" [--files file1 file2 ...] [--git-diff]\n');
     process.exit(1);
   }
 
@@ -61,20 +77,36 @@ async function main() {
     }
   }
 
-  const risk     = classifyRisk(totalTokens, cfg);
+  let diffTokens = 0;
+  if (useGitDiff) {
+    const diff = getGitDiff();
+    if (diff) {
+      diffTokens = estimateTokens(diff);
+      totalTokens += diffTokens;
+    }
+  }
+
+  const risk     = classifyRisk(totalTokens, cfg, task);
   const headroom = contextHeadroom(totalTokens, cfg.contextWindow);
 
   process.stdout.write(`\n⚡ MIMIR PREFLIGHT\n`);
   process.stdout.write(`${LINE}\n`);
 
-  if (filePaths.length > 0) {
+  const hasExtras = filePaths.length > 0 || useGitDiff;
+
+  if (hasExtras) {
     const filesTotal = fileResults.reduce((s, f) => s + f.tokens, 0);
     process.stdout.write(`  Task tokens (${method}):   ${fmt(method, taskResult.tokens)}\n`);
-    process.stdout.write(`  Files tokens:             ~${filesTotal.toLocaleString()}\n`);
-    for (const f of fileResults) {
-      const name = path.basename(f.path).padEnd(20).slice(0, 20);
-      if (f.error) process.stdout.write(`    ${name}  ⚠ ${f.error}\n`);
-      else         process.stdout.write(`    ${name}  ~${f.tokens.toLocaleString()}\n`);
+    if (fileResults.length > 0) {
+      process.stdout.write(`  Files tokens:             ~${filesTotal.toLocaleString()}\n`);
+      for (const f of fileResults) {
+        const name = path.basename(f.path).padEnd(20).slice(0, 20);
+        if (f.error) process.stdout.write(`    ${name}  ⚠ ${f.error}\n`);
+        else         process.stdout.write(`    ${name}  ~${f.tokens.toLocaleString()}\n`);
+      }
+    }
+    if (useGitDiff) {
+      process.stdout.write(`  Git diff tokens:          ~${diffTokens.toLocaleString()}\n`);
     }
     process.stdout.write(`  Total tokens:             ~${totalTokens.toLocaleString()}\n`);
   } else {
@@ -90,6 +122,8 @@ async function main() {
   process.stdout.write(`  Context headroom:     ${headroom}%\n`);
   process.stdout.write(`  Action:               ${risk.action}\n`);
   process.stdout.write(`${LINE}\n\n`);
+
+  appendHistory({ task, tokens: totalTokens, risk: risk.level, model: modelLine });
 }
 
 main().catch((err) => {
