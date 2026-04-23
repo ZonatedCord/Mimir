@@ -102,9 +102,10 @@ async function main() {
     const taskTokens  = estimateTokens(part);
     const totalTokens = taskTokens + fileTokens;
     const risk        = classifyRisk(totalTokens, cfg);
+    const modelHint   = cfg.defaultModel ? cfg.defaultModel : risk.suggestedModel;
     const preview     = part.length > 55 ? `${part.substring(0, 52)}...` : part;
     process.stdout.write(`  ${i + 1}. "${preview}"\n`);
-    process.stdout.write(`     → ${risk.level} ${risk.emoji} (~${totalTokens.toLocaleString()} tokens)\n`);
+    process.stdout.write(`     → ${risk.level} ${risk.emoji} (~${totalTokens.toLocaleString()} tokens) · ${modelHint}\n`);
   }
 
   process.stdout.write(`  Tip: split by module/feature, not by file type\n`);

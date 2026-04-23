@@ -81,8 +81,12 @@ async function main() {
     process.stdout.write(`  Input tokens (${method}):  ${fmt(method, totalTokens)}\n`);
   }
 
+  const modelLine = cfg.defaultModel
+    ? `${cfg.defaultModel} (from .mimir.json)`
+    : risk.suggestedModel;
+
   process.stdout.write(`  Risk:                 ${risk.level} ${risk.emoji}\n`);
-  process.stdout.write(`  Suggested model:      ${risk.suggestedModel}\n`);
+  process.stdout.write(`  Suggested model:      ${modelLine}\n`);
   process.stdout.write(`  Context headroom:     ${headroom}%\n`);
   process.stdout.write(`  Action:               ${risk.action}\n`);
   process.stdout.write(`${LINE}\n\n`);
