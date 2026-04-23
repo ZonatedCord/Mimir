@@ -3,8 +3,33 @@ const path = require('path');
 const os   = require('os');
 const { estimateTokens } = require('./tokenizer');
 
-const SYSTEM_OVERHEAD_DEFAULT = 3_000; // system prompt + command file + hooks baseline
-const TOKENS_PER_TURN         = 800;   // avg user+assistant message pair
+const SYSTEM_OVERHEAD_DEFAULT = 3_000;
+const TOKENS_PER_TURN         = 800;
+const AUTO_FILE_LIMIT         = 10;
+
+const SOURCE_EXTS = new Set([
+  '.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.rs', '.java',
+  '.rb', '.cs', '.vue', '.svelte', '.sh', '.css', '.scss',
+  '.md', '.json', '.yaml', '.yml',
+]);
+
+const SKIP_DIRS = new Set([
+  'node_modules', '.git', 'dist', 'build', 'coverage', '.cache',
+  '__pycache__', '.next', '.nuxt', 'vendor', 'tmp', 'temp', 'out',
+]);
+
+// Generic words that won't help match meaningful files
+const STOPWORDS = new Set([
+  'that', 'this', 'with', 'from', 'have', 'will', 'would', 'could',
+  'should', 'been', 'were', 'does', 'also', 'just', 'even', 'back',
+  'into', 'over', 'make', 'take', 'give', 'good', 'when', 'where',
+  'what', 'which', 'then', 'than', 'more', 'most', 'some', 'only',
+  'very', 'same', 'like', 'much', 'know', 'need', 'code', 'file',
+  'data', 'type', 'work', 'time', 'user', 'name', 'part', 'base',
+  'change', 'create', 'delete', 'remove', 'update', 'feature',
+  'system', 'logic', 'module', 'class', 'function', 'interface',
+  'entire', 'every', 'refactor', 'implement', 'write', 'rewrite',
+]);
 
 function findClaudeMds(cwd) {
   const base   = path.resolve(cwd || process.cwd());
@@ -33,10 +58,66 @@ function findClaudeMds(cwd) {
   return found;
 }
 
+function extractKeywords(task) {
+  return [...new Set(
+    task.toLowerCase().split(/\W+/).filter(w => w.length >= 4 && !STOPWORDS.has(w))
+  )];
+}
+
+function walkFiles(dir, maxDepth) {
+  const files = [];
+  function walk(d, depth) {
+    if (depth > maxDepth) return;
+    let entries;
+    try { entries = fs.readdirSync(d, { withFileTypes: true }); } catch { return; }
+    for (const e of entries) {
+      if (e.isDirectory()) {
+        if (!SKIP_DIRS.has(e.name) && !e.name.startsWith('.')) walk(path.join(d, e.name), depth + 1);
+      } else if (SOURCE_EXTS.has(path.extname(e.name))) {
+        files.push(path.join(d, e.name));
+      }
+    }
+  }
+  walk(dir, 0);
+  return files;
+}
+
+function scoreFile(filePath, keywords, cwd) {
+  const parts = path.relative(cwd, filePath).toLowerCase().split(/[/\\.]/).filter(Boolean);
+  let score   = 0;
+  for (const kw of keywords) {
+    for (const part of parts) {
+      if (part === kw)                            score += 3;
+      else if (part.includes(kw) || kw.includes(part)) score += 1;
+    }
+  }
+  return score;
+}
+
+function autoDetectFiles(task, cwd) {
+  const keywords = extractKeywords(task);
+  if (keywords.length === 0) return [];
+
+  const allFiles = walkFiles(cwd, 6);
+  return allFiles
+    .map(f => ({ filePath: f, score: scoreFile(f, keywords, cwd) }))
+    .filter(f => f.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, AUTO_FILE_LIMIT)
+    .map(({ filePath }) => {
+      const label = path.relative(cwd, filePath);
+      try {
+        return { filePath, label, tokens: estimateTokens(fs.readFileSync(filePath, 'utf8')), error: null };
+      } catch (err) {
+        return { filePath, label, tokens: 0, error: err.message };
+      }
+    });
+}
+
 function estimateContextOverhead(cfg, options) {
-  const turns        = (options && options.turns)  || 0;
-  const cwd          = (options && options.cwd)    || process.cwd();
-  const sysOverhead  = (cfg && cfg.systemOverhead != null) ? cfg.systemOverhead : SYSTEM_OVERHEAD_DEFAULT;
+  const turns       = (options && options.turns) || 0;
+  const cwd         = (options && options.cwd)   || process.cwd();
+  const sysOverhead = (cfg && cfg.systemOverhead != null) ? cfg.systemOverhead : SYSTEM_OVERHEAD_DEFAULT;
 
   const mds      = findClaudeMds(cwd);
   const mdTokens = mds.map(({ filePath, label }) => {
@@ -60,4 +141,7 @@ function estimateContextOverhead(cfg, options) {
   };
 }
 
-module.exports = { estimateContextOverhead, findClaudeMds, SYSTEM_OVERHEAD_DEFAULT, TOKENS_PER_TURN };
+module.exports = {
+  estimateContextOverhead, findClaudeMds, autoDetectFiles, extractKeywords,
+  SYSTEM_OVERHEAD_DEFAULT, TOKENS_PER_TURN, AUTO_FILE_LIMIT,
+};
