@@ -2,7 +2,7 @@ const assert = require('assert');
 const fs     = require('fs');
 const path   = require('path');
 const os     = require('os');
-const { loadConfig, DEFAULTS } = require('../scripts/lib/config');
+const { loadConfig, DEFAULTS, validateConfig } = require('../scripts/lib/config');
 
 // No config file → returns defaults
 const defaults = loadConfig('/tmp/nonexistent-mimir-test-dir');
@@ -39,6 +39,36 @@ assert.strictEqual(partial.defaultModel,      null);                        // u
 fs.writeFileSync(path.join(tmpDir, '.mimir.json'), 'NOT JSON {{{');
 const bad = loadConfig(tmpDir);
 assert.strictEqual(bad.contextWindow, DEFAULTS.contextWindow);
+
+// validateConfig — unknown key
+{
+  const w = validateConfig({ unknownKey: 1 });
+  assert.ok(w.some(m => m.includes('unknown key "unknownKey"')));
+}
+
+// validateConfig — unknown threshold key
+{
+  const w = validateConfig({ thresholds: { ULTRA: 5000 } });
+  assert.ok(w.some(m => m.includes('unknown threshold "ULTRA"')));
+}
+
+// validateConfig — threshold not a number
+{
+  const w = validateConfig({ thresholds: { LOW: 'big' } });
+  assert.ok(w.some(m => m.includes('"LOW" must be a number')));
+}
+
+// validateConfig — contextWindow not a number
+{
+  const w = validateConfig({ contextWindow: '200k' });
+  assert.ok(w.some(m => m.includes('"contextWindow" must be a number')));
+}
+
+// validateConfig — valid config → no warnings
+{
+  const w = validateConfig({ defaultModel: 'haiku-4.5', contextWindow: 100_000, thresholds: { LOW: 5000 } });
+  assert.strictEqual(w.length, 0);
+}
 
 // Cleanup
 fs.rmSync(tmpDir, { recursive: true });
