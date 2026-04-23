@@ -124,9 +124,11 @@ Estimates the token cost and risk level of a task before running it.
 ```
 /mimir "<describe what you want Claude to do>"
 /mimir "<task description>" --files path/to/file1.ts path/to/file2.ts
+/mimir "<task description>" --git-diff
+/mimir "<task description>" --turns N
 ```
 
-Pass `--files` to include the actual content of files Claude will read. This gives a much more accurate estimate than task description alone.
+Every estimate includes **all measurable token sources** — not just the task text. See [What Mimir estimates](#what-mimir-estimates).
 
 **Examples:**
 
@@ -372,25 +374,37 @@ user types /mimir "task description"
 
 ### What Mimir estimates
 
-Mimir estimates the token cost of your **task description text** — not the full execution context.
+Every `/mimir` run counts all **measurable token sources** and shows them labeled in the output:
 
-This means: a short description like *"refactor all 500 TypeScript files"* will show `LOW` risk because the description itself is short. What Mimir cannot predict is how many files Claude will read, how long its responses will be, or how many tool calls the task will require.
+| Source | How measured | Flag |
+|--------|-------------|------|
+| Task description | Anthropic API (exact) or heuristic | always |
+| System overhead | Configurable constant (~3k) | always |
+| `~/.claude/CLAUDE.md` | File read + heuristic | always |
+| `.claude/CLAUDE.md` (project + parents) | File read + heuristic | always |
+| Specific files | Heuristic | `--files` |
+| Git diff | Heuristic | `--git-diff` |
+| Conversation history | ~800 tok × N turns | `--turns N` |
 
-**What this means in practice:**
+**What cannot be measured:**
 
-| Task type | Without `--files` | With `--files` |
-|-----------|------------------|----------------|
-| Prompt-heavy tasks (long descriptions) | Good | — |
-| File-heavy tasks (reads many files) | Underestimates | Accurate |
-| Conversational tasks | Good | — |
-| Codebase-wide refactors | Underestimates | Accurate |
+- **Claude's responses** — how much Claude writes back is unpredictable. Assume 2–3× of input tokens for total context by end of task.
+- **Tool call overhead** — each file read, bash run, edit adds tokens Mimir cannot see in advance.
+- **Conversation history without `--turns`** — if you don't pass `--turns`, prior messages aren't counted. Use `--turns N` when running mid-session.
 
-Use `--files` whenever Claude will read specific files as part of the task.
+**Practical guide:**
+
+| Task type | Best flags |
+|-----------|-----------|
+| Fresh session, simple task | `/mimir "task"` |
+| Task reads specific files | `--files src/foo.ts src/bar.ts` |
+| Mid-session (50+ messages in) | `--turns 25` |
+| Pre-commit estimate | `--git-diff` |
+| Large codebase refactor | `--files` + `--turns` |
 
 ### Other limitations
 
 - `/split-task` uses pattern matching, not AI reasoning. Suggestions are starting points, not guaranteed optimal splits.
-- Model recommendations are fixed to Sonnet 4.6 / Haiku 4.5 in V1. Opus 4.7 thresholds and context windows will be added in V2.
 - No memory of previous tasks — each invocation is stateless.
 
 ---

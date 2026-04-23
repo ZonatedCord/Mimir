@@ -2,12 +2,13 @@ const fs   = require('fs');
 const path = require('path');
 
 const DEFAULTS = {
-  defaultModel:  null,
-  thresholds:    { LOW: 20_000, MEDIUM: 60_000, HIGH: 120_000 },
-  contextWindow: 200_000,
+  defaultModel:   null,
+  thresholds:     { LOW: 20_000, MEDIUM: 60_000, HIGH: 120_000 },
+  contextWindow:  200_000,
+  systemOverhead: 3_000,
 };
 
-const KNOWN_KEYS       = new Set(['defaultModel', 'thresholds', 'contextWindow']);
+const KNOWN_KEYS       = new Set(['defaultModel', 'thresholds', 'contextWindow', 'systemOverhead']);
 const KNOWN_THRESHOLDS = new Set(['LOW', 'MEDIUM', 'HIGH']);
 
 function validateConfig(user) {
@@ -28,6 +29,10 @@ function validateConfig(user) {
     warnings.push('"contextWindow" must be a number');
   }
 
+  if (user.systemOverhead !== undefined && typeof user.systemOverhead !== 'number') {
+    warnings.push('"systemOverhead" must be a number');
+  }
+
   return warnings;
 }
 
@@ -43,12 +48,13 @@ function loadConfig(cwd) {
     }
 
     return {
-      defaultModel:  user.defaultModel  ?? DEFAULTS.defaultModel,
-      thresholds:    { ...DEFAULTS.thresholds,  ...(user.thresholds  || {}) },
-      contextWindow: user.contextWindow ?? DEFAULTS.contextWindow,
+      defaultModel:   user.defaultModel   ?? DEFAULTS.defaultModel,
+      thresholds:     { ...DEFAULTS.thresholds, ...(user.thresholds || {}) },
+      contextWindow:  user.contextWindow  ?? DEFAULTS.contextWindow,
+      systemOverhead: user.systemOverhead ?? DEFAULTS.systemOverhead,
     };
   } catch {
-    return { ...DEFAULTS, thresholds: { ...DEFAULTS.thresholds } };
+    return { ...DEFAULTS, thresholds: { ...DEFAULTS.thresholds }, systemOverhead: DEFAULTS.systemOverhead };
   }
 }
 

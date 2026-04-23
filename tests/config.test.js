@@ -6,20 +6,23 @@ const { loadConfig, DEFAULTS, validateConfig } = require('../scripts/lib/config'
 
 // No config file → returns defaults
 const defaults = loadConfig('/tmp/nonexistent-mimir-test-dir');
-assert.strictEqual(defaults.contextWindow, DEFAULTS.contextWindow);
+assert.strictEqual(defaults.contextWindow,  DEFAULTS.contextWindow);
 assert.strictEqual(defaults.thresholds.LOW, DEFAULTS.thresholds.LOW);
-assert.strictEqual(defaults.defaultModel, null);
+assert.strictEqual(defaults.defaultModel,   null);
+assert.strictEqual(defaults.systemOverhead, DEFAULTS.systemOverhead);
 
 // Full config overrides all fields
 const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mimir-'));
 fs.writeFileSync(path.join(tmpDir, '.mimir.json'), JSON.stringify({
-  defaultModel:  'haiku-4.5',
-  contextWindow: 100_000,
-  thresholds:    { LOW: 5000, MEDIUM: 20000, HIGH: 50000 },
+  defaultModel:   'haiku-4.5',
+  contextWindow:  100_000,
+  systemOverhead: 5_000,
+  thresholds:     { LOW: 5000, MEDIUM: 20000, HIGH: 50000 },
 }));
 const full = loadConfig(tmpDir);
 assert.strictEqual(full.defaultModel,       'haiku-4.5');
 assert.strictEqual(full.contextWindow,      100_000);
+assert.strictEqual(full.systemOverhead,     5_000);
 assert.strictEqual(full.thresholds.LOW,     5000);
 assert.strictEqual(full.thresholds.MEDIUM,  20000);
 assert.strictEqual(full.thresholds.HIGH,    50000);
@@ -64,9 +67,15 @@ assert.strictEqual(bad.contextWindow, DEFAULTS.contextWindow);
   assert.ok(w.some(m => m.includes('"contextWindow" must be a number')));
 }
 
+// validateConfig — systemOverhead not a number
+{
+  const w = validateConfig({ systemOverhead: 'big' });
+  assert.ok(w.some(m => m.includes('"systemOverhead" must be a number')));
+}
+
 // validateConfig — valid config → no warnings
 {
-  const w = validateConfig({ defaultModel: 'haiku-4.5', contextWindow: 100_000, thresholds: { LOW: 5000 } });
+  const w = validateConfig({ defaultModel: 'haiku-4.5', contextWindow: 100_000, systemOverhead: 5_000, thresholds: { LOW: 5000 } });
   assert.strictEqual(w.length, 0);
 }
 

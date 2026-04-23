@@ -13,8 +13,9 @@ Print the following help text verbatim. Do not execute any commands or add comme
 | Command | Description |
 |---|---|
 | `/mimir "<task>"` | Estimate token cost + risk before running |
-| `/mimir "<task>" --files f1 f2` | Include file content in estimate |
+| `/mimir "<task>" --files f1 f2` | Include specific files in estimate |
 | `/mimir "<task>" --git-diff` | Include current git diff in estimate |
+| `/mimir "<task>" --turns N` | Include N conversation turns in estimate |
 | `/split-task "<task>"` | Split large task into safer sub-tasks |
 | `/mimir-diff` | Estimate token cost of current git diff |
 | `/mimir-config` | Show active configuration |

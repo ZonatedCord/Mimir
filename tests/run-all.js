@@ -12,6 +12,7 @@ const tests = [
   'tests/config-show.test.js',
   'tests/history.test.js',
   'tests/risk-smart-model.test.js',
+  'tests/context.test.js',
 ];
 
 for (const test of tests) {
