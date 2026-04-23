@@ -1,3 +1,5 @@
+const https = require('https');
+
 const CHARS_PER_TOKEN = {
   code:  3.5,
   json:  3.0,
@@ -40,7 +42,6 @@ async function countTokensViaAPI(text) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
-  const https = require('https');
   const body = JSON.stringify({
     model: 'claude-sonnet-4-6',
     messages: [{ role: 'user', content: text }],
@@ -60,6 +61,7 @@ async function countTokensViaAPI(text) {
         },
       },
       (res) => {
+        if (res.statusCode < 200 || res.statusCode >= 300) { resolve(null); return; }
         let data = '';
         res.on('data', (chunk) => { data += chunk; });
         res.on('end', () => {
