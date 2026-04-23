@@ -17,6 +17,7 @@ function main() {
   process.stdout.write(`${LINE}\n`);
   process.stdout.write(`  Source:           ${source}\n`);
   process.stdout.write(`  Context window:   ${cfg.contextWindow.toLocaleString()} tokens\n`);
+  process.stdout.write(`  System overhead:  ${cfg.systemOverhead.toLocaleString()} tokens\n`);
   process.stdout.write(`  Thresholds:       ${thresholds}\n`);
   process.stdout.write(`  Default model:    ${model}\n`);
   process.stdout.write(`${LINE}\n\n`);

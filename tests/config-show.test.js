@@ -13,6 +13,7 @@ assert.match(out1, /MIMIR CONFIG/,          'missing header');
 assert.match(out1, /Source/,                'missing source line');
 assert.match(out1, /defaults/,              'should show defaults when no .mimir.json');
 assert.match(out1, /Context window/,        'missing context window');
+assert.match(out1, /System overhead/,       'missing system overhead');
 assert.match(out1, /Thresholds/,            'missing thresholds');
 assert.match(out1, /Default model/,         'missing default model');
 assert.match(out1, /200[,.]000/,            'should show 200k default context window');
