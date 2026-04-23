@@ -1,10 +1,35 @@
 {
-  "name": "mimir",
-  "version": "0.1.0",
+  "name": "mimir-preflight",
+  "version": "1.0.0",
   "description": "Claude Code preflight checker — estimate token cost and risk before running expensive tasks",
   "license": "MIT",
-  "private": true,
+  "keywords": [
+    "claude-code",
+    "anthropic",
+    "token-estimation",
+    "preflight",
+    "llm",
+    "context-window",
+    "ai-tools",
+    "developer-tools"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ZonatedCord/Mimir.git"
+  },
+  "homepage": "https://github.com/ZonatedCord/Mimir#readme",
+  "bin": {
+    "mimir": "./scripts/estimate.js"
+  },
   "scripts": {
     "test": "node tests/run-all.js"
-  }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "scripts/",
+    ".claude/commands/",
+    "hooks/"
+  ]
 }
