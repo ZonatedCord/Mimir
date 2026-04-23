@@ -1,11 +1,17 @@
 const assert = require('assert');
-const { classifyRisk, contextHeadroom, THRESHOLDS, CONTEXT_WINDOW } = require('../scripts/lib/risk');
+const { classifyRisk, contextHeadroom, THRESHOLDS, CONTEXT_WINDOW, MODELS } = require('../scripts/lib/risk');
 
 // exported shape
 assert.strictEqual(typeof THRESHOLDS.LOW, 'number');
 assert.strictEqual(typeof THRESHOLDS.MEDIUM, 'number');
 assert.strictEqual(typeof THRESHOLDS.HIGH, 'number');
 assert.strictEqual(CONTEXT_WINDOW, 200_000);
+
+// MODELS shape
+assert.ok('sonnet-4.6' in MODELS, 'missing sonnet-4.6');
+assert.ok('haiku-4.5'  in MODELS, 'missing haiku-4.5');
+assert.ok('opus-4.7'   in MODELS, 'missing opus-4.7');
+assert.ok(typeof MODELS['sonnet-4.6'].contextWindow === 'number');
 
 // classifyRisk: boundary conditions
 assert.strictEqual(classifyRisk(0).level,       'LOW');
