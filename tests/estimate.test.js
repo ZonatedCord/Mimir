@@ -1,7 +1,7 @@
 const assert = require('assert');
 const { execSync } = require('child_process');
 
-const NO_KEY = { ...process.env, ANTHROPIC_API_KEY: '' };
+const NO_KEY = { ...process.env, ANTHROPIC_API_KEY: '', MIMIR_NO_HISTORY: '1' };
 
 // Normal usage — new layout
 const out = execSync(

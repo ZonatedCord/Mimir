@@ -6,6 +6,7 @@ const HISTORY_FILE = path.join(os.homedir(), '.mimir-history.json');
 const MAX_ENTRIES  = 100;
 
 function appendHistory(entry) {
+  if (process.env.MIMIR_NO_HISTORY) return;
   let history = [];
   try {
     history = JSON.parse(fs.readFileSync(HISTORY_FILE, 'utf8'));
