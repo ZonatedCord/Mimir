@@ -1,6 +1,6 @@
 {
   "name": "mimir-preflight",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Claude Code preflight checker — estimate token cost and risk before running expensive tasks",
   "license": "MIT",
   "keywords": [

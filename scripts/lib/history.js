@@ -2,7 +2,7 @@ const fs   = require('fs');
 const os   = require('os');
 const path = require('path');
 
-const HISTORY_FILE = path.join(os.homedir(), '.mimir-history.json');
+const HISTORY_FILE = process.env.MIMIR_HISTORY_FILE || path.join(os.homedir(), '.mimir-history.json');
 const MAX_ENTRIES  = 100;
 
 function appendHistory(entry) {
