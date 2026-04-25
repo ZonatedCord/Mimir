@@ -1,5 +1,44 @@
 # Changelog
 
+## [1.5.0] — 2026-04-25
+
+### V13 — History stats
+- `/mimir-history --stats`: aggregate statistics over all logged estimates
+  - Token usage: average, min, max
+  - Risk breakdown: count + percentage per level
+  - Most common risk level
+
+## [1.4.0] — 2026-04-25
+
+### V12 — Token-free updates, JSON output, real tok/turn, Gemini compat
+- `/mimir-update` slash command shrunk to 1 line (~30 tokens vs ~200): delegates to `scripts/update.sh`
+- `scripts/update.sh`: uses `git pull --ff-only` when repo exists (faster than full re-clone), falls back to fresh clone
+- `--output json` flag: emits structured JSON (`totalTokens`, `taskTokens`, `contextTokens`, `risk`, `headroomPct`, `suggestedModel`, `files`, `method`); suppresses formatted output
+- Real tok/turn from transcript: `readActualTokensPerTurn()` reads last 5 `.jsonl` sessions, averages assistant text-block tokens; fallback to 800 if <3 messages; display shows `(from transcript)` source
+- Gemini CLI compatibility: `gemini/` directory with `GEMINI.md` + 6 skill files; install via `cp -r gemini/skills/* ~/.gemini/skills/`
+
+## [1.3.0] — 2026-04-23
+
+### V11 — Hook detection + Codex CLI compat
+- Hook file auto-detection: reads `.sh` paths from `settings.json` / `settings.local.json` / `~/.codex/hooks.json`; tokenizes and shows in baseline
+- System overhead default: 3,000 → 2,000 (hooks now measured separately)
+- Codex CLI compatibility: `codex/skills/` (7 skill files), `codex/hooks.json` pre-task hook, `docs/README.codex.md`
+- Improved stop instruction in `mimir.md` (task text framed as opaque data)
+
+## [1.2.0] — 2026-04-23
+
+### V10 — CSV export + history env var
+- `/mimir-history --csv` export for piping into spreadsheets and scripts
+- `MIMIR_HISTORY_FILE` env var for custom history paths and test isolation
+
+## [1.1.0] — 2026-04-23
+
+### V9 — Auto file detection + two-section layout
+- Auto file detection: keyword extraction → repo walk → relevance scoring → top 10 files included automatically
+- Two-section output: Baseline (constant overhead) vs This task (variable inputs)
+- `--no-auto` flag to skip auto-detection; `--files` suppresses auto and uses explicit list
+- Fixed `$ARGUMENTS` quoting in command files
+
 ## [1.0.0] — 2026-04-23
 
 ### V8 — Full context overhead

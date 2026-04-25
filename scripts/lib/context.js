@@ -7,6 +7,46 @@ const SYSTEM_OVERHEAD_DEFAULT = 2_000;
 const TOKENS_PER_TURN         = 800;
 const AUTO_FILE_LIMIT         = 10;
 
+function readActualTokensPerTurn(encodedPath, claudeBaseDir) {
+  const base       = claudeBaseDir || path.join(os.homedir(), '.claude');
+  const projectDir = path.join(base, 'projects', encodedPath);
+
+  let files;
+  try {
+    files = fs.readdirSync(projectDir)
+      .filter(f => f.endsWith('.jsonl'))
+      .map(f => ({ name: f, mtime: fs.statSync(path.join(projectDir, f)).mtimeMs }))
+      .sort((a, b) => b.mtime - a.mtime)
+      .slice(0, 5)
+      .map(f => path.join(projectDir, f.name));
+  } catch {
+    return { tokensPerTurn: TOKENS_PER_TURN, source: 'default' };
+  }
+
+  if (files.length === 0) return { tokensPerTurn: TOKENS_PER_TURN, source: 'default' };
+
+  const counts = [];
+  for (const filePath of files) {
+    let lines;
+    try { lines = fs.readFileSync(filePath, 'utf8').split('\n').filter(Boolean); } catch { continue; }
+    for (const line of lines) {
+      try {
+        const entry = JSON.parse(line);
+        if (entry.type !== 'assistant') continue;
+        const content = entry.message && entry.message.content;
+        if (!Array.isArray(content)) continue;
+        const text = content.filter(b => b.type === 'text').map(b => b.text || '').join('');
+        if (text) counts.push(estimateTokens(text));
+      } catch { continue; }
+    }
+  }
+
+  if (counts.length < 3) return { tokensPerTurn: TOKENS_PER_TURN, source: 'default' };
+
+  const avg = Math.round(counts.reduce((s, n) => s + n, 0) / counts.length);
+  return { tokensPerTurn: avg, source: 'transcript' };
+}
+
 const SOURCE_EXTS = new Set([
   '.js', '.ts', '.jsx', '.tsx', '.py', '.go', '.rs', '.java',
   '.rb', '.cs', '.vue', '.svelte', '.sh', '.css', '.scss',
@@ -169,6 +209,11 @@ function estimateContextOverhead(cfg, options) {
   const cwd         = (options && options.cwd)   || process.cwd();
   const sysOverhead = (cfg && cfg.systemOverhead != null) ? cfg.systemOverhead : SYSTEM_OVERHEAD_DEFAULT;
 
+  const encoded            = cwd.replace(/[^a-zA-Z0-9]/g, '-');
+  const tpt                = turns > 0
+    ? readActualTokensPerTurn(encoded)
+    : { tokensPerTurn: TOKENS_PER_TURN, source: 'default' };
+
   const mds      = findClaudeMds(cwd);
   const mdTokens = mds.map(({ filePath, label }) => {
     try {
@@ -181,7 +226,7 @@ function estimateContextOverhead(cfg, options) {
   const hookScripts        = findHookScripts(cwd);
   const hookTotal          = hookScripts.reduce((s, h) => s + h.tokens, 0);
   const mdTotal            = mdTokens.reduce((s, r) => s + r.tokens, 0);
-  const conversationTokens = turns * TOKENS_PER_TURN;
+  const conversationTokens = turns * tpt.tokensPerTurn;
 
   return {
     systemOverhead:      sysOverhead,
@@ -191,11 +236,14 @@ function estimateContextOverhead(cfg, options) {
     mdTotal,
     conversationTokens,
     turns,
+    tokensPerTurn:       tpt.tokensPerTurn,
+    tokensPerTurnSource: tpt.source,
     total:               sysOverhead + hookTotal + mdTotal + conversationTokens,
   };
 }
 
 module.exports = {
   estimateContextOverhead, findClaudeMds, findHookScripts, autoDetectFiles, extractKeywords,
+  readActualTokensPerTurn,
   SYSTEM_OVERHEAD_DEFAULT, TOKENS_PER_TURN, AUTO_FILE_LIMIT,
 };

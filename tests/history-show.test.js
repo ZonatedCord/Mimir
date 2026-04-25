@@ -48,8 +48,33 @@ const envEmpty = { ...process.env, MIMIR_HISTORY_FILE: emptyFile };
 const outEmpty = execSync(`node "${bin}"`, { env: envEmpty }).toString();
 assert.match(outEmpty, /No Mimir history/, 'missing empty state message');
 
+// --stats output
+const statsEntries = [
+  { task: 'task a', tokens: 1000,  risk: 'LOW',      model: 'Haiku',   timestamp: '2026-04-24T10:00:00.000Z' },
+  { task: 'task b', tokens: 5000,  risk: 'LOW',      model: 'Sonnet',  timestamp: '2026-04-24T11:00:00.000Z' },
+  { task: 'task c', tokens: 30000, risk: 'MEDIUM',   model: 'Sonnet',  timestamp: '2026-04-24T12:00:00.000Z' },
+  { task: 'task d', tokens: 90000, risk: 'HIGH',     model: 'Opus',    timestamp: '2026-04-24T13:00:00.000Z' },
+];
+const statsFile = path.join(os.tmpdir(), `mimir-stats-test-${Date.now()}.json`);
+fs.writeFileSync(statsFile, JSON.stringify(statsEntries));
+const envStats = { ...process.env, MIMIR_HISTORY_FILE: statsFile };
+
+const outStats = execSync(`node "${bin}" --stats`, { env: envStats }).toString();
+assert.match(outStats, /MIMIR STATS/,      'missing STATS header');
+assert.match(outStats, /4/,                'should show total count');
+assert.match(outStats, /Average/,          'missing Average line');
+assert.match(outStats, /LOW/,              'missing LOW in breakdown');
+assert.match(outStats, /MEDIUM/,           'missing MEDIUM in breakdown');
+assert.match(outStats, /HIGH/,             'missing HIGH in breakdown');
+assert.doesNotMatch(outStats, /MIMIR HISTORY/, '--stats should not show history header');
+
+// --stats on empty history
+const outStatsEmpty = execSync(`node "${bin}" --stats`, { env: envEmpty }).toString();
+assert.match(outStatsEmpty, /No Mimir history/, 'empty stats should show no history message');
+
 // Cleanup
 fs.unlinkSync(tmpFile);
 fs.unlinkSync(emptyFile);
+fs.unlinkSync(statsFile);
 
 console.log('✅ history-show.test.js passed');

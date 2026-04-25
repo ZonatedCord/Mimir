@@ -113,10 +113,64 @@ fs.writeFileSync(path.join(hookClaudeDir3, 'settings.json'), JSON.stringify(noHo
 const noHookResults = findHookScripts(hookDir3);
 assert.deepStrictEqual(noHookResults, [], 'no hooks → empty array');
 
+// readActualTokensPerTurn — happy path with mock JSONL
+const { readActualTokensPerTurn } = require('../scripts/lib/context');
+const transcriptBase = fs.mkdtempSync(path.join(os.tmpdir(), 'mimir-trans-'));
+const projectDir     = path.join(transcriptBase, 'projects', 'mock-project');
+fs.mkdirSync(projectDir, { recursive: true });
+
+function makeAssistantLine(text) {
+  return JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text }] } });
+}
+const jsonlContent = [
+  makeAssistantLine('Hello, this is a short response.'),
+  makeAssistantLine('This is a longer response with more words to make it realistic for testing purposes.'),
+  makeAssistantLine('Another assistant message here for good measure and accurate token estimation testing.'),
+].join('\n') + '\n';
+fs.writeFileSync(path.join(projectDir, 'session1.jsonl'), jsonlContent);
+
+const tpt = readActualTokensPerTurn('mock-project', transcriptBase);
+assert.strictEqual(tpt.source, 'transcript', 'should use transcript source');
+assert.ok(tpt.tokensPerTurn > 0, 'tokensPerTurn should be > 0');
+
+// readActualTokensPerTurn — missing dir → fallback
+const tptMissing = readActualTokensPerTurn('no-such-project-xyz', transcriptBase);
+assert.strictEqual(tptMissing.source, 'default', 'missing dir should fallback');
+assert.strictEqual(tptMissing.tokensPerTurn, TOKENS_PER_TURN, 'fallback should use TOKENS_PER_TURN constant');
+
+// readActualTokensPerTurn — fewer than 3 messages → fallback
+const projectDir2 = path.join(transcriptBase, 'projects', 'tiny-project');
+fs.mkdirSync(projectDir2, { recursive: true });
+fs.writeFileSync(path.join(projectDir2, 'session.jsonl'), makeAssistantLine('only one message') + '\n');
+const tptTiny = readActualTokensPerTurn('tiny-project', transcriptBase);
+assert.strictEqual(tptTiny.source, 'default', 'fewer than 3 msgs should fallback');
+
+// readActualTokensPerTurn — skips non-text blocks (thinking, tool_use)
+const projectDir3 = path.join(transcriptBase, 'projects', 'mixed-project');
+fs.mkdirSync(projectDir3, { recursive: true });
+const mixedLine = JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [
+  { type: 'thinking', thinking: 'internal thoughts that should be ignored' },
+  { type: 'text', text: 'actual response text that should be counted' },
+  { type: 'tool_use', name: 'Bash', input: {} },
+] } });
+const mixedContent = [mixedLine, mixedLine, mixedLine].join('\n') + '\n';
+fs.writeFileSync(path.join(projectDir3, 'session.jsonl'), mixedContent);
+const tptMixed = readActualTokensPerTurn('mixed-project', transcriptBase);
+assert.strictEqual(tptMixed.source, 'transcript', 'mixed blocks should use transcript');
+assert.ok(tptMixed.tokensPerTurn > 0, 'mixed blocks tokensPerTurn > 0');
+
+// estimateContextOverhead returns tokensPerTurn and tokensPerTurnSource
+const r5 = estimateContextOverhead({}, { turns: 3, cwd: '/tmp' });
+assert.ok(typeof r5.tokensPerTurn === 'number',      'should return tokensPerTurn');
+assert.ok(typeof r5.tokensPerTurnSource === 'string', 'should return tokensPerTurnSource');
+assert.ok(r5.tokensPerTurnSource === 'default' || r5.tokensPerTurnSource === 'transcript');
+assert.strictEqual(r5.conversationTokens, 3 * r5.tokensPerTurn, 'conversationTokens = turns * tokensPerTurn');
+
 // Cleanup
-fs.rmSync(hookDir,  { recursive: true });
-fs.rmSync(hookDir2, { recursive: true });
-fs.rmSync(hookDir3, { recursive: true });
-fs.rmSync(tmpDir, { recursive: true });
+fs.rmSync(hookDir,        { recursive: true });
+fs.rmSync(hookDir2,       { recursive: true });
+fs.rmSync(hookDir3,       { recursive: true });
+fs.rmSync(tmpDir,         { recursive: true });
+fs.rmSync(transcriptBase, { recursive: true });
 
 console.log('✅ context.test.js passed');

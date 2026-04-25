@@ -19,8 +19,9 @@ Usage:
   /mimir "<task>"                   Estimate token cost + risk
   /mimir "<task>" --files f1 f2     Include specific files (skips auto-detect)
   /mimir "<task>" --git-diff        Include current git diff
-  /mimir "<task>" --turns N         Include N conversation turns (~800 tok/turn)
+  /mimir "<task>" --turns N         Include N conversation turns (real tok/turn from transcript)
   /mimir "<task>" --no-auto         Skip auto file detection
+  /mimir "<task>" --output json     Machine-readable JSON output
   /split-task "<task>"              Split large task into safer sub-tasks
 
 Risk levels: LOW ✅  MEDIUM ⚠️  HIGH 🔴  CRITICAL 🚨
@@ -29,6 +30,8 @@ Risk levels: LOW ✅  MEDIUM ⚠️  HIGH 🔴  CRITICAL 🚨
 function parseArgs(argv) {
   const useGitDiff = argv.includes('--git-diff');
   const noAuto     = argv.includes('--no-auto');
+  const outputIdx  = argv.indexOf('--output');
+  const outputJson = outputIdx !== -1 && argv[outputIdx + 1] === 'json';
   const turnsIdx   = argv.indexOf('--turns');
   const turns      = turnsIdx !== -1 ? (parseInt(argv[turnsIdx + 1], 10) || 0) : 0;
 
@@ -37,20 +40,22 @@ function parseArgs(argv) {
   while (i < argv.length) {
     if (argv[i] === '--git-diff' || argv[i] === '--no-auto') { i++;    continue; }
     if (argv[i] === '--turns')                               { i += 2; continue; }
+    if (argv[i] === '--output')                              { i += 2; continue; }
     clean.push(argv[i]);
     i++;
   }
 
   const filesIdx = clean.indexOf('--files');
   if (filesIdx === -1) {
-    return { task: clean.join(' ').trim(), filePaths: [], useGitDiff, turns, noAuto };
+    return { task: clean.join(' ').trim(), filePaths: [], useGitDiff, turns, noAuto, outputJson };
   }
   return {
     task:       clean.slice(0, filesIdx).join(' ').trim(),
     filePaths:  clean.slice(filesIdx + 1),
     useGitDiff,
     turns,
-    noAuto:     true, // explicit --files → skip auto
+    noAuto:     true,
+    outputJson,
   };
 }
 
@@ -84,7 +89,7 @@ async function countText(text, method) {
 }
 
 async function main() {
-  const { task, filePaths, useGitDiff, turns, noAuto } = parseArgs(process.argv.slice(2));
+  const { task, filePaths, useGitDiff, turns, noAuto, outputJson } = parseArgs(process.argv.slice(2));
 
   if (!task) { process.stdout.write(HELP); process.exit(0); }
 
@@ -129,6 +134,26 @@ async function main() {
   const headroom     = contextHeadroom(totalTokens, cfg.contextWindow);
   const modelLine    = cfg.defaultModel ? `${cfg.defaultModel} (from .mimir.json)` : risk.suggestedModel;
 
+  if (outputJson) {
+    const allFiles = [
+      ...fileResults.map(f => ({ label: f.label, tokens: f.tokens, auto: false })),
+      ...autoFiles.map(f => ({ label: f.label, tokens: f.tokens, auto: true })),
+    ];
+    process.stdout.write(JSON.stringify({
+      task,
+      totalTokens:   totalTokens,
+      taskTokens:    taskSpecific,
+      contextTokens: ctx.total,
+      risk:          risk.level,
+      suggestedModel: modelLine,
+      headroomPct:   headroom,
+      method,
+      files:         allFiles,
+    }) + '\n');
+    appendHistory({ task, tokens: totalTokens, risk: risk.level, model: modelLine });
+    return;
+  }
+
   process.stdout.write(`\n⚡ MIMIR PREFLIGHT\n`);
   process.stdout.write(`${LINE}\n`);
 
@@ -146,7 +171,10 @@ async function main() {
     else          row(label, `~${md.tokens.toLocaleString()}`);
   }
   if (turns > 0) {
-    row(`  Conversation (${turns} turns):`, `~${ctx.conversationTokens.toLocaleString()}  (~800 tok/turn)`);
+    const tptLabel = ctx.tokensPerTurnSource === 'transcript'
+      ? `~${ctx.tokensPerTurn.toLocaleString()} tok/turn, from transcript`
+      : `~${ctx.tokensPerTurn.toLocaleString()} tok/turn`;
+    row(`  Conversation (${turns} turns):`, `~${ctx.conversationTokens.toLocaleString()}  (${tptLabel})`);
   }
 
   // — Task section —

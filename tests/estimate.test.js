@@ -77,4 +77,22 @@ if (/Risk:\s+(HIGH|CRITICAL)/.test(outHigh)) {
   assert.match(outHigh, /MIMIR SPLIT/, 'HIGH/CRITICAL should include auto-split output');
 }
 
+// --output json emits valid JSON with expected fields
+const jsonOut = execSync(
+  'node scripts/estimate.js "add auth middleware" --output json --no-auto',
+  { env: NO_KEY }
+).toString();
+let parsed;
+assert.doesNotThrow(() => { parsed = JSON.parse(jsonOut); }, '--output json must emit valid JSON');
+assert.ok(typeof parsed.totalTokens  === 'number', 'totalTokens must be number');
+assert.ok(typeof parsed.taskTokens   === 'number', 'taskTokens must be number');
+assert.ok(typeof parsed.contextTokens === 'number', 'contextTokens must be number');
+assert.ok(typeof parsed.risk         === 'string',  'risk must be string');
+assert.ok(typeof parsed.headroomPct  === 'number',  'headroomPct must be number');
+assert.ok(Array.isArray(parsed.files),              'files must be array');
+assert.ok(parsed.totalTokens === parsed.taskTokens + parsed.contextTokens, 'total = task + context');
+
+// --output json suppresses formatted output
+assert.doesNotMatch(jsonOut, /MIMIR PREFLIGHT/, '--output json should not include formatted header');
+
 console.log('✅ estimate.test.js passed');

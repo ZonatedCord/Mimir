@@ -32,7 +32,17 @@ mkdir -p ~/.claude/commands/ && \
 cp -r ~/.claude/mimir/.claude/commands/* ~/.claude/commands/
 ```
 
-**Update:** `/mimir-update`
+**Update:** `/mimir-update` (runs `git pull`, ~30 tokens)
+
+### Gemini CLI
+
+```bash
+git clone https://github.com/ZonatedCord/Mimir.git ~/.gemini/mimir && \
+mkdir -p ~/.gemini/skills && \
+cp -r ~/.gemini/mimir/gemini/skills/* ~/.gemini/skills/
+```
+
+Restart Gemini to discover skills.
 
 **Verify:**
 
@@ -95,13 +105,15 @@ Mimir auto-detected `src/auth.ts` and `src/middleware/auth.ts` from your repo �
 | `/mimir "task"` | Estimate token cost + risk before running |
 | `/mimir "task" --files f1 f2` | Include specific files (suppresses auto-detect) |
 | `/mimir "task" --git-diff` | Include current git diff |
-| `/mimir "task" --turns N` | Include N past conversation turns (~800 tok each) |
+| `/mimir "task" --turns N` | Include N past conversation turns (auto-calibrated from transcript) |
 | `/mimir "task" --no-auto` | Skip auto file detection |
 | `/split-task "task"` | Split a large task into safer sub-tasks |
 | `/mimir-diff` | Estimate token cost of current git diff |
 | `/mimir-history` | Show recent estimate history |
+| `/mimir-history --stats` | Aggregate stats: avg tokens, risk breakdown |
 | `/mimir-config` | Show active configuration |
 | `/mimir-help` | Show this command list |
+| `/mimir "task" --output json` | Machine-readable JSON output |
 | `/mimir-update` | Update to latest version |
 
 **Quote the task text. Flags go outside the quotes.**
@@ -122,7 +134,7 @@ Every run always includes the baseline sources. Task-specific sources are added 
 | Auto-detected files | File read + heuristic | unless `--no-auto` or `--files` |
 | Specific files | File read + heuristic | `--files` |
 | Git diff | Heuristic | `--git-diff` |
-| Conversation history | ~800 tok × N turns | `--turns N` |
+| Conversation history | real tok/turn from transcript (fallback: 800) × N | `--turns N` |
 
 **What cannot be measured:**
 
@@ -240,10 +252,11 @@ Accuracy: **±15%**. Sufficient for risk classification. Output shows `(exact)` 
   → mimir.md command file
     → node scripts/estimate.js "task" [flags]
         → tokenizer.js  — count_tokens API → heuristic fallback
-        → context.js    — CLAUDE.md scan + system overhead + turns + auto file detect
+        → context.js    — CLAUDE.md scan + system overhead + transcript tok/turn + auto file detect
         → risk.js       — classify total → model hint
-        → print Baseline + This task + totals + risk
-        → if HIGH/CRITICAL: run split.js, append breakdown
+        → if --output json: emit JSON, exit
+        → else: print Baseline + This task + totals + risk
+              → if HIGH/CRITICAL: run split.js, append breakdown
 ```
 
 ---
@@ -284,15 +297,19 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 - `/mimir-history --csv` export (pipe into spreadsheets, scripts, dashboards)
 - `MIMIR_HISTORY_FILE` env var for test isolation and custom history paths
 
-**V11 — Current**
+**V11 — Done**
 - Hook file auto-detection: reads `.sh` hook files from `settings.json` / `settings.local.json` / `~/.codex/hooks.json`, tokenizes them, shows in baseline instead of flat constant
 - System overhead reduced from 3,000 → 2,000 (hooks now measured separately when present)
 - Codex CLI compatibility: `codex/skills/` for all commands, `codex/hooks.json` for pre-task hook, `docs/README.codex.md` install guide
 
-**V12 — Ideas**
-- Gemini CLI compatibility (GEMINI.md + tool mapping)
-- `--output json` flag for machine-readable estimates
-- Improved conversation turn estimation (read actual transcript instead of flat 800 tok/turn)
+**V13 — Current**
+- `/mimir-history --stats`: aggregate statistics over all logged estimates — avg/min/max tokens, risk level breakdown with counts and percentages, most common risk
+
+**V12 — Done**
+- `/mimir-update` token reduction: slash command shrunk to 1 line, delegates to `scripts/update.sh` (~30 tokens vs ~200). Uses `git pull` — faster than full re-clone
+- `--output json` flag: machine-readable JSON with `totalTokens`, `taskTokens`, `contextTokens`, `risk`, `headroomPct`, `files`, `method`
+- Real tok/turn from transcript: reads last 5 `.jsonl` sessions, averages assistant text-block tokens per turn. Falls back to 800 if fewer than 3 messages found. Output shows `(from transcript)` when active
+- Gemini CLI compatibility: `gemini/` directory with `GEMINI.md` + 6 skill files. Install: `cp -r gemini/skills/* ~/.gemini/skills/`
 
 ---
 

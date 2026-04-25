@@ -1,6 +1,6 @@
 ---
 description: Show recent Mimir estimate history
-argument-hint: "[n] [--csv]"
+argument-hint: "[n] [--csv] [--stats]"
 ---
 
 Execute this bash command and print the output verbatim:
