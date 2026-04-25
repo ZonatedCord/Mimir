@@ -134,7 +134,12 @@ async function main() {
 
   // — Baseline section —
   process.stdout.write(`  Baseline:\n`);
-  row('  System overhead:', `~${ctx.systemOverhead.toLocaleString()}  (prompt + command + hooks)`);
+  row('  System overhead:', `~${ctx.systemOverhead.toLocaleString()}  (prompt + Claude UI)`);
+  for (const h of ctx.hookScripts) {
+    const label = `  ${h.label}:`;
+    if (h.error) row(label, `⚠ ${h.error}`);
+    else         row(label, `~${h.tokens.toLocaleString()}`);
+  }
   for (const md of ctx.claudeMds) {
     const label = `  ${md.label}:`;
     if (md.error) row(label, `⚠ ${md.error}`);

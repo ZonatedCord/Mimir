@@ -3,7 +3,7 @@ const path = require('path');
 const os   = require('os');
 const { estimateTokens } = require('./tokenizer');
 
-const SYSTEM_OVERHEAD_DEFAULT = 3_000;
+const SYSTEM_OVERHEAD_DEFAULT = 2_000;
 const TOKENS_PER_TURN         = 800;
 const AUTO_FILE_LIMIT         = 10;
 
@@ -30,6 +30,56 @@ const STOPWORDS = new Set([
   'system', 'logic', 'module', 'class', 'function', 'interface',
   'entire', 'every', 'refactor', 'implement', 'write', 'rewrite',
 ]);
+
+function extractShPaths(command) {
+  const results = [];
+  const re = /(?:bash|sh)\s+"?([^"'\s]+\.sh)"?/g;
+  let m;
+  while ((m = re.exec(command)) !== null) {
+    results.push(m[1].replace(/^~/, os.homedir()));
+  }
+  return results;
+}
+
+function findHookScripts(cwd) {
+  const candidates = [
+    path.join(os.homedir(), '.claude', 'settings.json'),
+    path.join(os.homedir(), '.claude', 'settings.local.json'),
+    path.join(cwd, '.claude', 'settings.json'),
+    path.join(cwd, '.claude', 'settings.local.json'),
+    path.join(os.homedir(), '.codex', 'hooks.json'),
+    path.join(cwd, '.codex', 'hooks.json'),
+  ];
+
+  const seen    = new Set();
+  const scripts = [];
+
+  for (const settingsPath of candidates) {
+    let settings;
+    try { settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8')); } catch { continue; }
+    const hooks = settings.hooks || {};
+    for (const [event, groups] of Object.entries(hooks)) {
+      if (!Array.isArray(groups)) continue;
+      for (const group of groups) {
+        for (const hook of (group.hooks || [])) {
+          if (hook.type !== 'command' || !hook.command) continue;
+          for (const shPath of extractShPaths(hook.command)) {
+            if (seen.has(shPath)) continue;
+            seen.add(shPath);
+            const label = `Hook (${event}): ${path.basename(shPath)}`;
+            try {
+              scripts.push({ filePath: shPath, label, tokens: estimateTokens(fs.readFileSync(shPath, 'utf8')), event, error: null });
+            } catch (err) {
+              scripts.push({ filePath: shPath, label, tokens: 0, event, error: err.message });
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return scripts;
+}
 
 function findClaudeMds(cwd) {
   const base   = path.resolve(cwd || process.cwd());
@@ -128,20 +178,24 @@ function estimateContextOverhead(cfg, options) {
     }
   });
 
+  const hookScripts        = findHookScripts(cwd);
+  const hookTotal          = hookScripts.reduce((s, h) => s + h.tokens, 0);
   const mdTotal            = mdTokens.reduce((s, r) => s + r.tokens, 0);
   const conversationTokens = turns * TOKENS_PER_TURN;
 
   return {
     systemOverhead:      sysOverhead,
     claudeMds:           mdTokens,
+    hookScripts,
+    hookTotal,
     mdTotal,
     conversationTokens,
     turns,
-    total:               sysOverhead + mdTotal + conversationTokens,
+    total:               sysOverhead + hookTotal + mdTotal + conversationTokens,
   };
 }
 
 module.exports = {
-  estimateContextOverhead, findClaudeMds, autoDetectFiles, extractKeywords,
+  estimateContextOverhead, findClaudeMds, findHookScripts, autoDetectFiles, extractKeywords,
   SYSTEM_OVERHEAD_DEFAULT, TOKENS_PER_TURN, AUTO_FILE_LIMIT,
 };

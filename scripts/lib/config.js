@@ -5,7 +5,7 @@ const DEFAULTS = {
   defaultModel:   null,
   thresholds:     { LOW: 20_000, MEDIUM: 60_000, HIGH: 120_000 },
   contextWindow:  200_000,
-  systemOverhead: 3_000,
+  systemOverhead: 2_000,
 };
 
 const KNOWN_KEYS       = new Set(['defaultModel', 'thresholds', 'contextWindow', 'systemOverhead']);

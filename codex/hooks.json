@@ -1,0 +1,17 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.codex/mimir/hooks/pre-task.sh",
+            "timeout": 30,
+            "statusMessage": "Mimir preflight check"
+          }
+        ]
+      }
+    ]
+  }
+}

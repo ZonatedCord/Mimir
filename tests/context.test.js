@@ -3,7 +3,7 @@ const fs     = require('fs');
 const path   = require('path');
 const os     = require('os');
 const {
-  estimateContextOverhead, autoDetectFiles, extractKeywords,
+  estimateContextOverhead, autoDetectFiles, extractKeywords, findHookScripts,
   SYSTEM_OVERHEAD_DEFAULT, TOKENS_PER_TURN,
 } = require('../scripts/lib/context');
 
@@ -17,7 +17,8 @@ assert.strictEqual(r1.systemOverhead,     SYSTEM_OVERHEAD_DEFAULT);
 assert.strictEqual(r1.conversationTokens, 0);
 assert.strictEqual(r1.turns,              0);
 assert.ok(Array.isArray(r1.claudeMds));
-assert.strictEqual(r1.total, SYSTEM_OVERHEAD_DEFAULT + r1.mdTotal);
+assert.ok(Array.isArray(r1.hookScripts));
+assert.strictEqual(r1.total, SYSTEM_OVERHEAD_DEFAULT + r1.hookTotal + r1.mdTotal);
 
 // Turns multiply correctly
 const r2 = estimateContextOverhead({}, { turns: 5, cwd: '/tmp' });
@@ -63,7 +64,59 @@ assert.ok(!labels.some(l => l.includes('payment')), 'should not find unrelated f
 const noResults = autoDetectFiles('update the module', tmpDir);
 assert.ok(Array.isArray(noResults));
 
+// findHookScripts — detects .sh files from settings.json hooks
+const hookDir    = fs.mkdtempSync(path.join(os.tmpdir(), 'mimir-hooks-'));
+const hookClaudeDir = path.join(hookDir, '.claude');
+fs.mkdirSync(hookClaudeDir);
+const shPath     = path.join(hookDir, 'my-hook.sh');
+fs.writeFileSync(shPath, '#!/usr/bin/env bash\necho hello\n');
+const settings   = {
+  hooks: {
+    UserPromptSubmit: [
+      { matcher: '', hooks: [{ type: 'command', command: `bash ${shPath}` }] }
+    ]
+  }
+};
+fs.writeFileSync(path.join(hookClaudeDir, 'settings.json'), JSON.stringify(settings));
+const hookResults = findHookScripts(hookDir);
+assert.ok(hookResults.length > 0,                        'should find hook script');
+assert.ok(hookResults[0].label.includes('my-hook.sh'),   'label should include filename');
+assert.ok(hookResults[0].tokens > 0,                     'should have tokens > 0');
+assert.strictEqual(hookResults[0].error, null,           'should have no error');
+assert.strictEqual(hookResults[0].event, 'UserPromptSubmit', 'should record event name');
+
+// findHookScripts — missing .sh file → error entry, not throw
+const settingsMissing = {
+  hooks: {
+    UserPromptSubmit: [
+      { matcher: '', hooks: [{ type: 'command', command: 'bash /nonexistent/path/hook.sh' }] }
+    ]
+  }
+};
+const missingSettings = path.join(hookClaudeDir, 'settings2.json');
+fs.writeFileSync(missingSettings, JSON.stringify(settingsMissing));
+// Use a fresh tmp dir so only settings2 is found
+const hookDir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'mimir-hooks2-'));
+const hookClaudeDir2 = path.join(hookDir2, '.claude');
+fs.mkdirSync(hookClaudeDir2);
+fs.writeFileSync(path.join(hookClaudeDir2, 'settings.json'), JSON.stringify(settingsMissing));
+const errorResults = findHookScripts(hookDir2);
+assert.ok(errorResults.length > 0,            'should return entry for missing file');
+assert.ok(errorResults[0].error !== null,      'missing file should have error');
+
+// findHookScripts — no hooks in settings → empty array
+const noHooksSettings = { model: 'sonnet' };
+const hookDir3 = fs.mkdtempSync(path.join(os.tmpdir(), 'mimir-hooks3-'));
+const hookClaudeDir3 = path.join(hookDir3, '.claude');
+fs.mkdirSync(hookClaudeDir3);
+fs.writeFileSync(path.join(hookClaudeDir3, 'settings.json'), JSON.stringify(noHooksSettings));
+const noHookResults = findHookScripts(hookDir3);
+assert.deepStrictEqual(noHookResults, [], 'no hooks → empty array');
+
 // Cleanup
+fs.rmSync(hookDir,  { recursive: true });
+fs.rmSync(hookDir2, { recursive: true });
+fs.rmSync(hookDir3, { recursive: true });
 fs.rmSync(tmpDir, { recursive: true });
 
 console.log('✅ context.test.js passed');

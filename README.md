@@ -23,6 +23,8 @@ Mimir fills that gap. Run `/mimir` before the task. Get a risk assessment in sec
 
 ## Install
 
+### Claude Code
+
 ```bash
 rm -rf ~/.claude/mimir && \
 git clone https://github.com/ZonatedCord/Mimir.git ~/.claude/mimir && \
@@ -30,19 +32,25 @@ mkdir -p ~/.claude/commands/ && \
 cp -r ~/.claude/mimir/.claude/commands/* ~/.claude/commands/
 ```
 
-**Requirements:** Node.js ≥ 18. No `npm install`. No API keys needed beyond what Claude Code already provides.
-
-**Update:**
-
-```
-/mimir-update
-```
+**Update:** `/mimir-update`
 
 **Verify:**
 
 ```bash
 node ~/.claude/mimir/scripts/estimate.js "hello world"
 ```
+
+### Codex CLI
+
+```bash
+git clone https://github.com/ZonatedCord/Mimir.git ~/.codex/mimir && \
+mkdir -p ~/.agents/skills && \
+ln -s ~/.codex/mimir/codex/skills ~/.agents/skills/mimir
+```
+
+Restart Codex to discover skills. See [docs/README.codex.md](docs/README.codex.md) for full Codex guide.
+
+**Requirements:** Node.js ≥ 18. No `npm install`. No API keys.
 
 ---
 
@@ -56,7 +64,7 @@ node ~/.claude/mimir/scripts/estimate.js "hello world"
 ⚡ MIMIR PREFLIGHT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Baseline
-    System overhead:          ~3,000  (prompt + command + hooks)
+    System overhead:          ~2,000  (prompt + Claude UI)
     ~/.claude/CLAUDE.md:      ~1,432
     .claude/CLAUDE.md:          ~187
   ─────────────────────────────────
@@ -106,7 +114,8 @@ Every run always includes the baseline sources. Task-specific sources are added 
 
 | Source | Measured | When |
 |--------|----------|------|
-| System overhead | Configurable constant (~3k) | always |
+| System overhead | Configurable constant (~2k) | always |
+| Hook scripts (`.sh`) | File read + heuristic | when found in `settings.json` / `settings.local.json` |
 | `~/.claude/CLAUDE.md` | File read + heuristic | always |
 | `.claude/CLAUDE.md` (project + parents) | File read + heuristic | always |
 | Task description | Anthropic API (exact) or heuristic | always |
@@ -265,19 +274,25 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 
 ## Roadmap
 
-**V9 — Current**
+**V9 — Done**
 - Auto file detection (keyword → repo walk → relevance scoring)
 - Two-section output: Baseline vs This task
 - `--no-auto` flag; `--files` suppresses auto-detect
 - Fixed `$ARGUMENTS` quoting in command files
 
-**V10 — Current**
+**V10 — Done**
 - `/mimir-history --csv` export (pipe into spreadsheets, scripts, dashboards)
 - `MIMIR_HISTORY_FILE` env var for test isolation and custom history paths
 
-**V11 — Planned**
-- Hook file auto-detection (read actual `.sh` hook files for overhead instead of flat constant)
-- Codex CLI compatibility: command file port, tool name mapping, install path adaptation
+**V11 — Current**
+- Hook file auto-detection: reads `.sh` hook files from `settings.json` / `settings.local.json` / `~/.codex/hooks.json`, tokenizes them, shows in baseline instead of flat constant
+- System overhead reduced from 3,000 → 2,000 (hooks now measured separately when present)
+- Codex CLI compatibility: `codex/skills/` for all commands, `codex/hooks.json` for pre-task hook, `docs/README.codex.md` install guide
+
+**V12 — Ideas**
+- Gemini CLI compatibility (GEMINI.md + tool mapping)
+- `--output json` flag for machine-readable estimates
+- Improved conversation turn estimation (read actual transcript instead of flat 800 tok/turn)
 
 ---
 
