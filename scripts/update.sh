@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 if [ -d ~/.claude/mimir/.git ]; then
+  git -C ~/.claude/mimir stash --include-untracked -q 2>/dev/null || true
   git -C ~/.claude/mimir pull --ff-only
 else
   rm -rf ~/.claude/mimir
