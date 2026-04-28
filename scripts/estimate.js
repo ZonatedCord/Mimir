@@ -7,6 +7,7 @@ const { classifyRisk, contextHeadroom }                = require('./lib/risk');
 const { loadConfig }                                   = require('./lib/config');
 const { appendHistory }                                = require('./lib/history');
 const { estimateContextOverhead, autoDetectFiles }     = require('./lib/context');
+const { estimateCacheSavings }                         = require('./lib/cache');
 
 const LINE = '━'.repeat(35);
 const SEP  = '─'.repeat(35);
@@ -130,9 +131,11 @@ async function main() {
 
   const taskSpecific = taskResult.tokens + fileTotal + autoTotal + diffTokens;
   const totalTokens  = taskSpecific + ctx.total;
-  const risk         = classifyRisk(totalTokens, cfg, task);
-  const headroom     = contextHeadroom(totalTokens, cfg.contextWindow);
-  const modelLine    = cfg.defaultModel ? `${cfg.defaultModel} (from .mimir.json)` : risk.suggestedModel;
+  const risk             = classifyRisk(totalTokens, cfg, task);
+  const headroom         = contextHeadroom(totalTokens, cfg.contextWindow);
+  const modelLine        = cfg.defaultModel ? `${cfg.defaultModel} (from .mimir.json)` : risk.suggestedModel;
+  const cacheableTokens  = ctx.systemOverhead + ctx.hookTotal + ctx.mdTotal;
+  const cacheInfo        = estimateCacheSavings(cacheableTokens, totalTokens);
 
   if (outputJson) {
     const allFiles = [
@@ -141,14 +144,15 @@ async function main() {
     ];
     process.stdout.write(JSON.stringify({
       task,
-      totalTokens:   totalTokens,
-      taskTokens:    taskSpecific,
-      contextTokens: ctx.total,
-      risk:          risk.level,
+      totalTokens:    totalTokens,
+      taskTokens:     taskSpecific,
+      contextTokens:  ctx.total,
+      risk:           risk.level,
       suggestedModel: modelLine,
-      headroomPct:   headroom,
+      headroomPct:    headroom,
       method,
-      files:         allFiles,
+      files:          allFiles,
+      cache:          cacheInfo,
     }) + '\n');
     appendHistory({ task, tokens: totalTokens, risk: risk.level, model: modelLine });
     return;
@@ -208,6 +212,9 @@ async function main() {
   process.stdout.write(`  Risk:                 ${risk.level} ${risk.emoji}\n`);
   process.stdout.write(`  Suggested model:      ${modelLine}\n`);
   process.stdout.write(`  Context headroom:     ${headroom}%\n`);
+  if (cacheInfo) {
+    process.stdout.write(`  Prompt cache:         ~${cacheInfo.cacheableTokens.toLocaleString()} tok stable (${cacheInfo.cacheablePct}%) → ~${cacheInfo.costReductionPct}% cost/turn if cached\n`);
+  }
   process.stdout.write(`  Action:               ${risk.action}\n`);
   process.stdout.write(`${LINE}\n\n`);
 
