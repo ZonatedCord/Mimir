@@ -15,6 +15,7 @@ const tests = [
   'tests/context.test.js',
   'tests/history-show.test.js',
   'tests/cache.test.js',
+  'tests/turns.test.js',
 ];
 
 for (const test of tests) {

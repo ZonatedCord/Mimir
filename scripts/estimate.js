@@ -8,6 +8,7 @@ const { loadConfig }                                   = require('./lib/config')
 const { appendHistory }                                = require('./lib/history');
 const { estimateContextOverhead, autoDetectFiles }     = require('./lib/context');
 const { estimateCacheSavings }                         = require('./lib/cache');
+const { estimateTaskTurns, projectAtTurn }             = require('./lib/turns');
 
 const LINE = '━'.repeat(35);
 const SEP  = '─'.repeat(35);
@@ -136,6 +137,9 @@ async function main() {
   const modelLine        = cfg.defaultModel ? `${cfg.defaultModel} (from .mimir.json)` : risk.suggestedModel;
   const cacheableTokens  = ctx.systemOverhead + ctx.hookTotal + ctx.mdTotal;
   const cacheInfo        = estimateCacheSavings(cacheableTokens, totalTokens);
+  const turnEst          = estimateTaskTurns(task);
+  const projectedTokens  = projectAtTurn(totalTokens, ctx.tokensPerTurn, turnEst.turns);
+  const projectedRisk    = classifyRisk(projectedTokens, cfg, task);
 
   if (outputJson) {
     const allFiles = [
@@ -153,6 +157,7 @@ async function main() {
       method,
       files:          allFiles,
       cache:          cacheInfo,
+      projection:     { turns: turnEst.turns, category: turnEst.category, tokens: projectedTokens, risk: projectedRisk.level },
     }) + '\n');
     appendHistory({ task, tokens: totalTokens, risk: risk.level, model: modelLine });
     return;
@@ -215,6 +220,7 @@ async function main() {
   if (cacheInfo) {
     process.stdout.write(`  Prompt cache:         ~${cacheInfo.cacheableTokens.toLocaleString()} tok stable (${cacheInfo.cacheablePct}%) → ~${cacheInfo.costReductionPct}% cost/turn if cached\n`);
   }
+  process.stdout.write(`  Multi-turn (est. ~${turnEst.turns} turns): ~${projectedTokens.toLocaleString()} tok → ${projectedRisk.level} ${projectedRisk.emoji}\n`);
   process.stdout.write(`  Action:               ${risk.action}\n`);
   process.stdout.write(`${LINE}\n\n`);
 
