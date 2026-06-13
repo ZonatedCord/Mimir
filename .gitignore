@@ -2,3 +2,5 @@ node_modules/
 context.md
 **/.DS_Store
 .claude/settings.local.json
+AGENTS.md
+.agents/
