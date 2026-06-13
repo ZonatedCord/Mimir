@@ -8,6 +8,7 @@ const tests = [
   'tests/tokenizer.test.js',
   'tests/config.test.js',
   'tests/estimate.test.js',
+  'tests/cost.test.js',
   'tests/split.test.js',
   'tests/config-show.test.js',
   'tests/history.test.js',

@@ -98,6 +98,27 @@ Mimir auto-detected `src/auth.ts` and `src/middleware/auth.ts` from your repo â€
 
 ---
 
+## Cost Estimation
+
+Example output:
+
+```text
+Dollar cost: ~$0.0330 (sonnet) | ~$0.0088 (haiku) | ~$0.0007 (gemini) | ~$0.0225 (gpt-4o)
+```
+
+Cost is computed from estimated input tokens, assuming output tokens = 2x input tokens, using these per-million-token rates:
+
+- Claude Sonnet: $3 input / $15 output
+- Claude Haiku: $0.80 input / $4 output
+- Gemini Flash: $0.075 input / $0.30 output
+- GPT-4o: $2.50 input / $10 output
+
+### Credits
+
+This cost estimate support is a fork of [github.com/ZonatedCord/Mimir](https://github.com/ZonatedCord/Mimir). The addition is `scripts/lib/cost.js` plus one extra output line in `scripts/estimate.js`.
+
+---
+
 ## Commands
 
 | Command | Description |

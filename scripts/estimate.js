@@ -9,6 +9,7 @@ const { appendHistory }                                = require('./lib/history'
 const { estimateContextOverhead, autoDetectFiles }     = require('./lib/context');
 const { estimateCacheSavings }                         = require('./lib/cache');
 const { estimateTaskTurns, projectAtTurn }             = require('./lib/turns');
+const { estimateAllModelCosts }                        = require('./lib/cost');
 
 const LINE = '━'.repeat(35);
 const SEP  = '─'.repeat(35);
@@ -140,6 +141,7 @@ async function main() {
   const turnEst          = estimateTaskTurns(task);
   const projectedTokens  = projectAtTurn(totalTokens, ctx.tokensPerTurn, turnEst.turns);
   const projectedRisk    = classifyRisk(projectedTokens, cfg, task);
+  const costInfo         = estimateAllModelCosts(taskResult.tokens);
 
   if (outputJson) {
     const allFiles = [
@@ -216,6 +218,12 @@ async function main() {
   process.stdout.write(`\n`);
   process.stdout.write(`  Risk:                 ${risk.level} ${risk.emoji}\n`);
   process.stdout.write(`  Suggested model:      ${modelLine}\n`);
+  if (costInfo) {
+    const costLine = costInfo
+      .map((c) => `~$${c.totalCost.toFixed(4)} (${c.label})`)
+      .join(' | ');
+    process.stdout.write(`  Dollar cost:          ${costLine}\n`);
+  }
   process.stdout.write(`  Context headroom:     ${headroom}%\n`);
   if (cacheInfo) {
     process.stdout.write(`  Prompt cache:         ~${cacheInfo.cacheableTokens.toLocaleString()} tok stable (${cacheInfo.cacheablePct}%) → ~${cacheInfo.costReductionPct}% cost/turn if cached\n`);
