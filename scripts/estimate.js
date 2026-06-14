@@ -9,8 +9,7 @@ const { appendHistory }                                = require('./lib/history'
 const { estimateContextOverhead, autoDetectFiles }     = require('./lib/context');
 const { estimateCacheSavings }                         = require('./lib/cache');
 const { estimateTaskTurns, projectAtTurn }             = require('./lib/turns');
-const { estimateAllModelCosts, estimatePresetCosts }   = require('./lib/cost');
-const { TASK_PRESETS }                                 = require('./lib/presets');
+const { estimateAllModelCosts }                        = require('./lib/cost');
 
 const LINE = '━'.repeat(35);
 const SEP  = '─'.repeat(35);
@@ -32,8 +31,6 @@ Risk levels: LOW ✅  MEDIUM ⚠️  HIGH 🔴  CRITICAL 🚨
 `.trimStart();
 
 function parseArgs(argv) {
-  const presetIdx  = argv.indexOf('--preset');
-  const preset     = presetIdx !== -1 ? argv[presetIdx + 1] : null;
   const useGitDiff = argv.includes('--git-diff');
   const noAuto     = argv.includes('--no-auto');
   const outputIdx  = argv.indexOf('--output');
@@ -44,7 +41,7 @@ function parseArgs(argv) {
   const clean = [];
   let i = 0;
   while (i < argv.length) {
-    if (argv[i] === '--git-diff' || argv[i] === '--no-auto' || argv[i] === '--preset') { i += argv[i] === '--preset' ? 2 : 1; continue; }
+    if (argv[i] === '--git-diff' || argv[i] === '--no-auto') { i++; continue; }
     if (argv[i] === '--turns')                               { i += 2; continue; }
     if (argv[i] === '--output')                              { i += 2; continue; }
     clean.push(argv[i]);
@@ -53,7 +50,7 @@ function parseArgs(argv) {
 
   const filesIdx = clean.indexOf('--files');
   if (filesIdx === -1) {
-    return { task: clean.join(' ').trim(), filePaths: [], useGitDiff, turns, noAuto, outputJson, preset };
+    return { task: clean.join(' ').trim(), filePaths: [], useGitDiff, turns, noAuto, outputJson };
   }
   return {
     task:       clean.slice(0, filesIdx).join(' ').trim(),
@@ -62,7 +59,6 @@ function parseArgs(argv) {
     turns,
     noAuto:     true,
     outputJson,
-    preset,
   };
 }
 
@@ -96,45 +92,7 @@ async function countText(text, method) {
 }
 
 async function main() {
-  const { task, filePaths, useGitDiff, turns, noAuto, outputJson, preset } = parseArgs(process.argv.slice(2));
-
-  if (preset) {
-    const presetDef = TASK_PRESETS[preset];
-    if (!presetDef) {
-      process.stdout.write(HELP);
-      process.exit(0);
-    }
-    const presetCosts = estimatePresetCosts(presetDef.tokens);
-    if (preset === 'refactor') {
-      process.stdout.write(
-        `\n⚡ DEBTOKEN PREFLIGHT\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-        `  Preset: Refactor session (~61,200 tokens)\n\n` +
-        `  Dollar cost:\n` +
-        `    sonnet:  ~$0.49\n` +
-        `    haiku:   ~$0.13\n` +
-        `    gemini:  ~$0.005\n\n` +
-        `  Switch to gemini → save 98% ($0.485)\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`
-      );
-      return;
-    }
-    const lines = [
-      `\n⚡ DEBTOKEN PREFLIGHT`,
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-      `  Preset: ${presetDef.label} (~${presetDef.tokens.toLocaleString()} tokens)`,
-      ``,
-      `  Dollar cost:`,
-      `    sonnet:  ~$${presetCosts[0].totalCost.toFixed(2)}`,
-      `    haiku:   ~$${presetCosts[1].totalCost.toFixed(2)}`,
-      `    gemini:  ~$${presetCosts[2].totalCost.toFixed(3)}`,
-      ``,
-      `  Switch to gemini → save 98% ($${(presetCosts[0].totalCost - presetCosts[2].totalCost).toFixed(3)})`,
-      `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`,
-    ];
-    process.stdout.write(lines.join('\n') + '\n');
-    return;
-  }
+  const { task, filePaths, useGitDiff, turns, noAuto, outputJson } = parseArgs(process.argv.slice(2));
 
   if (!task) { process.stdout.write(HELP); process.exit(0); }
 
@@ -144,7 +102,6 @@ async function main() {
   const method     = taskResult.method;
   const ctx        = estimateContextOverhead(cfg, { turns, cwd });
 
-  // Explicit files
   const fileResults = [];
   let fileTotal     = 0;
   for (const fp of filePaths) {
@@ -158,7 +115,6 @@ async function main() {
     }
   }
 
-  // Auto-detected files (only when no explicit --files and not --no-auto)
   let autoFiles   = [];
   let autoTotal   = 0;
   if (!noAuto) {
@@ -166,7 +122,6 @@ async function main() {
     autoTotal = autoFiles.reduce((s, f) => s + f.tokens, 0);
   }
 
-  // Git diff
   let diffTokens = 0;
   if (useGitDiff) {
     const diff = getGitDiff();
@@ -208,10 +163,9 @@ async function main() {
     return;
   }
 
-  process.stdout.write(`\n⚡ DEBTOKEN PREFLIGHT\n`);
+  process.stdout.write(`\n⚡ MIMIR PREFLIGHT\n`);
   process.stdout.write(`${LINE}\n`);
 
-  // — Baseline section —
   process.stdout.write(`  Baseline:\n`);
   row('  System overhead:', `~${ctx.systemOverhead.toLocaleString()}  (prompt + Claude UI)`);
   for (const h of ctx.hookScripts) {
@@ -231,7 +185,6 @@ async function main() {
     row(`  Conversation (${turns} turns):`, `~${ctx.conversationTokens.toLocaleString()}  (${tptLabel})`);
   }
 
-  // — Task section —
   process.stdout.write(`\n  This task:\n`);
   row(`  Task (${method}):`, fmt(method, taskResult.tokens));
 
@@ -253,7 +206,6 @@ async function main() {
 
   if (useGitDiff) row('  Git diff:', `~${diffTokens.toLocaleString()}`);
 
-  // — Totals —
   process.stdout.write(`\n  ${SEP}\n`);
   row('Task tokens:', `~${taskSpecific.toLocaleString()}`);
   row('Total context:', `~${totalTokens.toLocaleString()}`);
@@ -294,4 +246,3 @@ if (require.main === module) {
 }
 
 module.exports = { parseArgs, main };
-

@@ -1,4 +1,4 @@
-# Mimir
+# Debtoken
 
 > *In Norse mythology, Mimir guards the Well of Wisdom. Odin consulted Mimir before every major decision.*
 
@@ -26,10 +26,10 @@ Mimir fills that gap. Run `/mimir` before the task. Get a risk assessment in sec
 ### Claude Code
 
 ```bash
-rm -rf ~/.claude/mimir && \
-git clone https://github.com/ZonatedCord/Mimir.git ~/.claude/mimir && \
+rm -rf ~/.claude/debtoken && \
+git clone https://github.com/ZonatedCord/Mimir.git ~/.claude/debtoken && \
 mkdir -p ~/.claude/commands/ && \
-cp -r ~/.claude/mimir/.claude/commands/* ~/.claude/commands/
+cp -r ~/.claude/debtoken/.claude/commands/* ~/.claude/commands/
 ```
 
 **Update:** `/mimir-update` (runs `git pull`, ~30 tokens)
@@ -37,9 +37,9 @@ cp -r ~/.claude/mimir/.claude/commands/* ~/.claude/commands/
 ### Gemini CLI
 
 ```bash
-git clone https://github.com/ZonatedCord/Mimir.git ~/.gemini/mimir && \
+git clone https://github.com/ZonatedCord/Mimir.git ~/.gemini/debtoken && \
 mkdir -p ~/.gemini/skills && \
-cp -r ~/.gemini/mimir/gemini/skills/* ~/.gemini/skills/
+cp -r ~/.gemini/debtoken/gemini/skills/* ~/.gemini/skills/
 ```
 
 Restart Gemini to discover skills.
@@ -47,15 +47,15 @@ Restart Gemini to discover skills.
 **Verify:**
 
 ```bash
-node ~/.claude/mimir/scripts/estimate.js "hello world"
+node ~/.claude/debtoken/scripts/estimate.js "hello world"
 ```
 
 ### Codex CLI
 
 ```bash
-git clone https://github.com/ZonatedCord/Mimir.git ~/.codex/mimir && \
+git clone https://github.com/ZonatedCord/Mimir.git ~/.codex/debtoken && \
 mkdir -p ~/.agents/skills && \
-ln -s ~/.codex/mimir/codex/skills ~/.agents/skills/mimir
+ln -s ~/.codex/debtoken/codex/skills ~/.agents/skills/debtoken
 ```
 
 Restart Codex to discover skills. See [docs/README.codex.md](docs/README.codex.md) for full Codex guide.
@@ -71,7 +71,7 @@ Restart Codex to discover skills. See [docs/README.codex.md](docs/README.codex.m
 ```
 
 ```
-⚡ MIMIR PREFLIGHT
+⚡ DEBTOKEN PREFLIGHT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Baseline
     System overhead:          ~2,000  (prompt + Claude UI)
@@ -112,10 +112,6 @@ Cost is computed from estimated input tokens, assuming output tokens = 2x input 
 - Claude Haiku: $0.80 input / $4 output
 - Gemini Flash: $0.075 input / $0.30 output
 - GPT-4o: $2.50 input / $10 output
-
-### Credits
-
-This cost estimate support is a fork of [github.com/ZonatedCord/Mimir](https://github.com/ZonatedCord/Mimir). The addition is `scripts/lib/cost.js` plus one extra output line in `scripts/estimate.js`.
 
 ---
 
@@ -366,3 +362,5 @@ Designed and built using **[Claude Code](https://claude.ai/code)** — Anthropic
 ## License
 
 MIT © 2026 [Marco Barlera](https://github.com/marcobarlera)
+
+
