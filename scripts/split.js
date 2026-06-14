@@ -159,7 +159,11 @@ async function main() {
   process.stdout.write(`${LINE}\n\n`);
 }
 
-main().catch((err) => {
-  process.stderr.write(`Error: ${err.message}\n`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    process.stderr.write(`Error: ${err.message}\n`);
+    process.exit(1);
+  });
+}
+
+module.exports = { parseArgs, detectSplitPoints, main };

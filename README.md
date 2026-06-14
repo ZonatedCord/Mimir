@@ -1,4 +1,4 @@
-# Debtoken
+# Mimir
 
 > *In Norse mythology, Mimir guards the Well of Wisdom. Odin consulted Mimir before every major decision.*
 
@@ -26,10 +26,10 @@ Mimir fills that gap. Run `/mimir` before the task. Get a risk assessment in sec
 ### Claude Code
 
 ```bash
-rm -rf ~/.claude/debtoken && \
-git clone https://github.com/ZonatedCord/Mimir.git ~/.claude/debtoken && \
+rm -rf ~/.claude/mimir && \
+git clone https://github.com/ZonatedCord/Mimir.git ~/.claude/mimir && \
 mkdir -p ~/.claude/commands/ && \
-cp -r ~/.claude/debtoken/.claude/commands/* ~/.claude/commands/
+cp -r ~/.claude/mimir/.claude/commands/* ~/.claude/commands/
 ```
 
 **Update:** `/mimir-update` (runs `git pull`, ~30 tokens)
@@ -37,9 +37,9 @@ cp -r ~/.claude/debtoken/.claude/commands/* ~/.claude/commands/
 ### Gemini CLI
 
 ```bash
-git clone https://github.com/ZonatedCord/Mimir.git ~/.gemini/debtoken && \
+git clone https://github.com/ZonatedCord/Mimir.git ~/.gemini/mimir && \
 mkdir -p ~/.gemini/skills && \
-cp -r ~/.gemini/debtoken/gemini/skills/* ~/.gemini/skills/
+cp -r ~/.gemini/mimir/gemini/skills/* ~/.gemini/skills/
 ```
 
 Restart Gemini to discover skills.
@@ -47,15 +47,15 @@ Restart Gemini to discover skills.
 **Verify:**
 
 ```bash
-node ~/.claude/debtoken/scripts/estimate.js "hello world"
+node ~/.claude/mimir/scripts/estimate.js "hello world"
 ```
 
 ### Codex CLI
 
 ```bash
-git clone https://github.com/ZonatedCord/Mimir.git ~/.codex/debtoken && \
+git clone https://github.com/ZonatedCord/Mimir.git ~/.codex/mimir && \
 mkdir -p ~/.agents/skills && \
-ln -s ~/.codex/debtoken/codex/skills ~/.agents/skills/debtoken
+ln -s ~/.codex/mimir/codex/skills ~/.agents/skills/mimir
 ```
 
 Restart Codex to discover skills. See [docs/README.codex.md](docs/README.codex.md) for full Codex guide.
@@ -71,7 +71,7 @@ Restart Codex to discover skills. See [docs/README.codex.md](docs/README.codex.m
 ```
 
 ```
-⚡ DEBTOKEN PREFLIGHT
+⚡ MIMIR PREFLIGHT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Baseline
     System overhead:          ~2,000  (prompt + Claude UI)

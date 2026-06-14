@@ -90,7 +90,7 @@ assert.match(outBadFile, /⚠/);
 // HIGH/CRITICAL risk → auto-split appended
 const outHigh = await runEstimate(['analyze every file in the entire codebase and refactor all modules and update all tests and generate full documentation']);
 if (/Risk:\s+(HIGH|CRITICAL)/.test(outHigh)) {
-  assert.match(outHigh, /DEBTOKEN SPLIT/, 'HIGH/CRITICAL should include auto-split output');
+  assert.match(outHigh, /MIMIR SPLIT/, 'HIGH/CRITICAL should include auto-split output');
 }
 
 // --output json emits valid JSON with expected fields
@@ -110,4 +110,5 @@ assert.doesNotMatch(jsonOut, /MIMIR PREFLIGHT/, '--output json should not includ
 
 console.log('✅ estimate.test.js passed');
 })().catch(err => { throw err; });
+
 
