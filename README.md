@@ -359,6 +359,13 @@ Designed and built using **[Claude Code](https://claude.ai/code)** — Anthropic
 
 ---
 
+## Contributors
+
+- **[Marco Barlera](https://github.com/ZonatedCord)** — author
+- **[Alok J George (aether-png)](https://github.com/aether-png)** — dollar cost estimation across 4 models, test refactoring ([#1](https://github.com/ZonatedCord/Mimir/pull/1))
+
+---
+
 ## License
 
 MIT © 2026 [Marco Barlera](https://github.com/marcobarlera)
