@@ -3,32 +3,15 @@ const fs     = require('fs');
 const os     = require('os');
 const path   = require('path');
 
-// Override HISTORY_FILE for test isolation
 const testHistoryFile = path.join(os.tmpdir(), `mimir-history-test-${Date.now()}.json`);
+const originalEnv = { ...process.env };
+process.env.MIMIR_HISTORY_FILE = testHistoryFile;
 
-// Patch require cache so history.js uses our test file
 const historyPath = path.resolve(__dirname, '..', 'scripts', 'lib', 'history.js');
 delete require.cache[require.resolve(historyPath)];
+const { appendHistory, loadHistory } = require(historyPath);
 
-const origWrite = fs.writeFileSync.bind(fs);
-const origRead  = fs.readFileSync.bind(fs);
-
-// Monkey-patch to redirect history file ops
-const { appendHistory, loadHistory } = (() => {
-  const mod = require(historyPath);
-  return mod;
-})();
-
-// Since we can't easily redirect the internal HISTORY_FILE constant,
-// test via the actual file path but clean up after
-const HISTORY_FILE = path.join(os.homedir(), '.mimir-history.json');
-
-// Backup existing history
-let backup = null;
-try { backup = fs.readFileSync(HISTORY_FILE, 'utf8'); } catch {}
-
-// Clean slate
-try { fs.unlinkSync(HISTORY_FILE); } catch {}
+try { fs.unlinkSync(testHistoryFile); } catch {}
 
 // Test: loadHistory returns [] when file missing
 const empty = loadHistory();
@@ -47,10 +30,7 @@ appendHistory({ task: 'second task', tokens: 200, risk: 'MEDIUM', model: 'Sonnet
 const h2 = loadHistory();
 assert.strictEqual(h2.length, 2, 'should have 2 entries');
 
-// Restore backup
-try { fs.unlinkSync(HISTORY_FILE); } catch {}
-if (backup !== null) {
-  try { fs.writeFileSync(HISTORY_FILE, backup); } catch {}
-}
+try { fs.unlinkSync(testHistoryFile); } catch {}
+process.env = originalEnv;
 
 console.log('✅ history.test.js passed');

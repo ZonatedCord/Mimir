@@ -23,4 +23,8 @@ function main() {
   process.stdout.write(`${LINE}\n\n`);
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = { main };

@@ -98,6 +98,23 @@ Mimir auto-detected `src/auth.ts` and `src/middleware/auth.ts` from your repo �
 
 ---
 
+## Cost Estimation
+
+Example output:
+
+```text
+Dollar cost: ~$0.0330 (sonnet) | ~$0.0088 (haiku) | ~$0.0007 (gemini) | ~$0.0225 (gpt-4o)
+```
+
+Cost is computed from estimated input tokens, assuming output tokens = 2x input tokens, using these per-million-token rates:
+
+- Claude Sonnet: $3 input / $15 output
+- Claude Haiku: $0.80 input / $4 output
+- Gemini Flash: $0.075 input / $0.30 output
+- GPT-4o: $2.50 input / $10 output
+
+---
+
 ## Commands
 
 | Command | Description |
@@ -345,3 +362,5 @@ Designed and built using **[Claude Code](https://claude.ai/code)** — Anthropic
 ## License
 
 MIT © 2026 [Marco Barlera](https://github.com/marcobarlera)
+
+

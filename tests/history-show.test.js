@@ -2,8 +2,32 @@ const assert    = require('assert');
 const fs        = require('fs');
 const os        = require('os');
 const path      = require('path');
-const { execSync } = require('child_process');
 
+async function runHistoryShow(args, env) {
+  const originalArgv = process.argv;
+  const originalEnv = { ...process.env };
+  const originalWrite = process.stdout.write;
+  let stdout = '';
+
+  process.argv = [process.execPath, 'scripts/history-show.js', ...args];
+  process.stdout.write = (chunk) => { stdout += chunk; return true; };
+  Object.assign(process.env, env);
+
+  try {
+    delete require.cache[require.resolve('../scripts/lib/history.js')];
+    delete require.cache[require.resolve('../scripts/history-show.js')];
+    require('../scripts/history-show.js').main();
+  } finally {
+    process.argv = originalArgv;
+    process.stdout.write = originalWrite;
+    process.env = originalEnv;
+    delete require.cache[require.resolve('../scripts/history-show.js')];
+  }
+
+  return stdout;
+}
+
+void (async () => {
 const tmpFile = path.join(os.tmpdir(), `mimir-history-show-test-${Date.now()}.json`);
 const entries = [
   { task: 'refactor auth module', tokens: 5200, risk: 'LOW',    model: 'Sonnet 4.6', timestamp: '2026-04-24T10:00:00.000Z' },
@@ -12,10 +36,9 @@ const entries = [
 fs.writeFileSync(tmpFile, JSON.stringify(entries));
 
 const env = { ...process.env, MIMIR_HISTORY_FILE: tmpFile, MIMIR_NO_HISTORY: '1' };
-const bin = path.resolve(__dirname, '..', 'scripts', 'history-show.js');
 
 // Normal output — shows entries
-const outNormal = execSync(`node "${bin}"`, { env }).toString();
+const outNormal = await runHistoryShow([], env);
 assert.match(outNormal, /MIMIR HISTORY/,       'missing header');
 assert.match(outNormal, /refactor auth/,        'missing entry 1');
 assert.match(outNormal, /analyze entire/,       'missing entry 2');
@@ -23,12 +46,12 @@ assert.match(outNormal, /LOW/,                  'missing risk LOW');
 assert.match(outNormal, /HIGH/,                 'missing risk HIGH');
 
 // N arg limits output
-const outOne = execSync(`node "${bin}" 1`, { env }).toString();
+const outOne = await runHistoryShow(['1'], env);
 assert.match(outOne, /analyze entire/,  'N=1 should show most recent');
 assert.doesNotMatch(outOne, /refactor auth/, 'N=1 should not show older entry');
 
 // --csv output
-const outCsv = execSync(`node "${bin}" --csv`, { env }).toString();
+const outCsv = await runHistoryShow(['--csv'], env);
 assert.match(outCsv, /timestamp,task,tokens,risk,model/, 'missing CSV header');
 assert.match(outCsv, /refactor auth module/,             'missing CSV entry 1');
 assert.match(outCsv, /analyze entire codebase/,          'missing CSV entry 2');
@@ -37,7 +60,7 @@ assert.match(outCsv, /85000/,                            'missing tokens in CSV'
 assert.doesNotMatch(outCsv, /MIMIR HISTORY/,             'CSV should not have header block');
 
 // --csv with N arg
-const outCsvOne = execSync(`node "${bin}" 1 --csv`, { env }).toString();
+const outCsvOne = await runHistoryShow(['1', '--csv'], env);
 const csvLines = outCsvOne.trim().split('\n');
 assert.strictEqual(csvLines.length, 2, 'N=1 --csv should have header + 1 data row');
 
@@ -45,7 +68,7 @@ assert.strictEqual(csvLines.length, 2, 'N=1 --csv should have header + 1 data ro
 const emptyFile = path.join(os.tmpdir(), `mimir-history-empty-${Date.now()}.json`);
 fs.writeFileSync(emptyFile, '[]');
 const envEmpty = { ...process.env, MIMIR_HISTORY_FILE: emptyFile };
-const outEmpty = execSync(`node "${bin}"`, { env: envEmpty }).toString();
+const outEmpty = await runHistoryShow([], envEmpty);
 assert.match(outEmpty, /No Mimir history/, 'missing empty state message');
 
 // --stats output
@@ -59,7 +82,7 @@ const statsFile = path.join(os.tmpdir(), `mimir-stats-test-${Date.now()}.json`);
 fs.writeFileSync(statsFile, JSON.stringify(statsEntries));
 const envStats = { ...process.env, MIMIR_HISTORY_FILE: statsFile };
 
-const outStats = execSync(`node "${bin}" --stats`, { env: envStats }).toString();
+const outStats = await runHistoryShow(['--stats'], envStats);
 assert.match(outStats, /MIMIR STATS/,      'missing STATS header');
 assert.match(outStats, /4/,                'should show total count');
 assert.match(outStats, /Average/,          'missing Average line');
@@ -69,7 +92,7 @@ assert.match(outStats, /HIGH/,             'missing HIGH in breakdown');
 assert.doesNotMatch(outStats, /MIMIR HISTORY/, '--stats should not show history header');
 
 // --stats on empty history
-const outStatsEmpty = execSync(`node "${bin}" --stats`, { env: envEmpty }).toString();
+const outStatsEmpty = await runHistoryShow(['--stats'], envEmpty);
 assert.match(outStatsEmpty, /No Mimir history/, 'empty stats should show no history message');
 
 // Cleanup
@@ -78,3 +101,4 @@ fs.unlinkSync(emptyFile);
 fs.unlinkSync(statsFile);
 
 console.log('✅ history-show.test.js passed');
+})().catch(err => { throw err; });

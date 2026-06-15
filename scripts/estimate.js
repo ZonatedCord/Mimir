@@ -9,6 +9,7 @@ const { appendHistory }                                = require('./lib/history'
 const { estimateContextOverhead, autoDetectFiles }     = require('./lib/context');
 const { estimateCacheSavings }                         = require('./lib/cache');
 const { estimateTaskTurns, projectAtTurn }             = require('./lib/turns');
+const { estimateAllModelCosts }                        = require('./lib/cost');
 
 const LINE = '━'.repeat(35);
 const SEP  = '─'.repeat(35);
@@ -40,7 +41,7 @@ function parseArgs(argv) {
   const clean = [];
   let i = 0;
   while (i < argv.length) {
-    if (argv[i] === '--git-diff' || argv[i] === '--no-auto') { i++;    continue; }
+    if (argv[i] === '--git-diff' || argv[i] === '--no-auto') { i++; continue; }
     if (argv[i] === '--turns')                               { i += 2; continue; }
     if (argv[i] === '--output')                              { i += 2; continue; }
     clean.push(argv[i]);
@@ -101,7 +102,6 @@ async function main() {
   const method     = taskResult.method;
   const ctx        = estimateContextOverhead(cfg, { turns, cwd });
 
-  // Explicit files
   const fileResults = [];
   let fileTotal     = 0;
   for (const fp of filePaths) {
@@ -115,7 +115,6 @@ async function main() {
     }
   }
 
-  // Auto-detected files (only when no explicit --files and not --no-auto)
   let autoFiles   = [];
   let autoTotal   = 0;
   if (!noAuto) {
@@ -123,7 +122,6 @@ async function main() {
     autoTotal = autoFiles.reduce((s, f) => s + f.tokens, 0);
   }
 
-  // Git diff
   let diffTokens = 0;
   if (useGitDiff) {
     const diff = getGitDiff();
@@ -140,6 +138,7 @@ async function main() {
   const turnEst          = estimateTaskTurns(task);
   const projectedTokens  = projectAtTurn(totalTokens, ctx.tokensPerTurn, turnEst.turns);
   const projectedRisk    = classifyRisk(projectedTokens, cfg, task);
+  const costInfo         = estimateAllModelCosts(totalTokens);
 
   if (outputJson) {
     const allFiles = [
@@ -155,6 +154,7 @@ async function main() {
       suggestedModel: modelLine,
       headroomPct:    headroom,
       method,
+      costInfo,
       files:          allFiles,
       cache:          cacheInfo,
       projection:     { turns: turnEst.turns, category: turnEst.category, tokens: projectedTokens, risk: projectedRisk.level },
@@ -166,7 +166,6 @@ async function main() {
   process.stdout.write(`\n⚡ MIMIR PREFLIGHT\n`);
   process.stdout.write(`${LINE}\n`);
 
-  // — Baseline section —
   process.stdout.write(`  Baseline:\n`);
   row('  System overhead:', `~${ctx.systemOverhead.toLocaleString()}  (prompt + Claude UI)`);
   for (const h of ctx.hookScripts) {
@@ -186,7 +185,6 @@ async function main() {
     row(`  Conversation (${turns} turns):`, `~${ctx.conversationTokens.toLocaleString()}  (${tptLabel})`);
   }
 
-  // — Task section —
   process.stdout.write(`\n  This task:\n`);
   row(`  Task (${method}):`, fmt(method, taskResult.tokens));
 
@@ -208,7 +206,6 @@ async function main() {
 
   if (useGitDiff) row('  Git diff:', `~${diffTokens.toLocaleString()}`);
 
-  // — Totals —
   process.stdout.write(`\n  ${SEP}\n`);
   row('Task tokens:', `~${taskSpecific.toLocaleString()}`);
   row('Total context:', `~${totalTokens.toLocaleString()}`);
@@ -216,6 +213,12 @@ async function main() {
   process.stdout.write(`\n`);
   process.stdout.write(`  Risk:                 ${risk.level} ${risk.emoji}\n`);
   process.stdout.write(`  Suggested model:      ${modelLine}\n`);
+  if (costInfo) {
+    const costLine = costInfo
+      .map((c) => `~$${c.totalCost.toFixed(4)} (${c.label})`)
+      .join(' | ');
+    process.stdout.write(`  Dollar cost:          ${costLine}\n`);
+  }
   process.stdout.write(`  Context headroom:     ${headroom}%\n`);
   if (cacheInfo) {
     process.stdout.write(`  Prompt cache:         ~${cacheInfo.cacheableTokens.toLocaleString()} tok stable (${cacheInfo.cacheablePct}%) → ~${cacheInfo.costReductionPct}% cost/turn if cached\n`);
@@ -238,4 +241,8 @@ async function main() {
   }
 }
 
-main().catch(err => { process.stderr.write(`Error: ${err.message}\n`); process.exit(1); });
+if (require.main === module) {
+  main().catch(err => { process.stderr.write(`Error: ${err.message}\n`); process.exit(1); });
+}
+
+module.exports = { parseArgs, main };
