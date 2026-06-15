@@ -368,6 +368,6 @@ Designed and built using **[Claude Code](https://claude.ai/code)** — Anthropic
 
 ## License
 
-MIT © 2026 [Marco Barlera](https://github.com/marcobarlera)
+MIT © 2026 [Marco Barlera](https://marcobarlera.com)
 
 
