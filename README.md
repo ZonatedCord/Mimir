@@ -21,6 +21,21 @@ Mimir fills that gap. Run `/mimir` before the task. Get a risk assessment in sec
 
 ---
 
+## Mimir vs native `/cost` / `/usage`
+
+Claude Code ships `/usage` (aliased as `/cost`) and `/insights`. Both are **reactive** — they report what already happened:
+
+| | `/usage` / `/cost` / `/insights` | Mimir |
+|---|---|---|
+| When | After / during the session | **Before** you run the task |
+| What | Tokens and $ already spent, past friction points | Predicted tokens and risk for a task not yet run |
+| Output | Session totals, plan usage bars, HTML report | Risk level, suggested model, split recommendation |
+| Action | Informational | Advises proceed / split / reschedule |
+
+They're complementary, not competing: `/usage` tells you what a session cost, Mimir tells you whether to start it.
+
+---
+
 ## Install
 
 ### Claude Code
@@ -321,6 +336,12 @@ Zero external dependencies. Tests use Node.js built-in `assert` and `child_proce
 
 **V13 — Current**
 - `/mimir-history --stats`: aggregate statistics over all logged estimates — avg/min/max tokens, risk level breakdown with counts and percentages, most common risk
+
+**V14 — Proposed**
+- Budget guard: `.mimir.json` `maxDailyTokens`, warn when cumulative history exceeds threshold
+- `--auto-model`: pick model from task type, print ready-to-run command
+- Accuracy tracking: compare estimate vs actual (Stop hook reads transcript post-task), track drift over time
+- Batch estimate: estimate N tasks from a list/file, output table sorted by risk (sprint planning)
 
 **V12 — Done**
 - `/mimir-update` token reduction: slash command shrunk to 1 line, delegates to `scripts/update.sh` (~30 tokens vs ~200). Uses `git pull` — faster than full re-clone
