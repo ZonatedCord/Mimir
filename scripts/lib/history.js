@@ -17,7 +17,8 @@ function appendHistory(entry) {
   if (history.length > MAX_ENTRIES) history = history.slice(-MAX_ENTRIES);
 
   try {
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2), { mode: 0o600 });
+    fs.chmodSync(HISTORY_FILE, 0o600);
   } catch {} // ignore write errors (read-only fs, etc.)
 }
 

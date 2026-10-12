@@ -3,6 +3,7 @@ const fs   = require('fs');
 const path = require('path');
 const { estimateTokens } = require('./lib/tokenizer');
 const { classifyRisk }   = require('./lib/risk');
+const { resolveArgv }    = require('./lib/stdin-input');
 const { loadConfig }     = require('./lib/config');
 
 const LINE = '━'.repeat(35);
@@ -106,7 +107,7 @@ function detectSplitPoints(task) {
 }
 
 async function main() {
-  const { task, filePaths } = parseArgs(process.argv.slice(2));
+  const { task, filePaths } = parseArgs(resolveArgv(process.argv.slice(2)));
 
   if (!task) {
     process.stderr.write('Usage: node split.js "<task>" [--files file1 file2 ...]\n');

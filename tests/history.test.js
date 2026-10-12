@@ -30,6 +30,13 @@ appendHistory({ task: 'second task', tokens: 200, risk: 'MEDIUM', model: 'Sonnet
 const h2 = loadHistory();
 assert.strictEqual(h2.length, 2, 'should have 2 entries');
 
+if (process.platform !== 'win32') {
+  assert.strictEqual(fs.statSync(testHistoryFile).mode & 0o777, 0o600, 'history file should be 0600');
+  fs.chmodSync(testHistoryFile, 0o644);
+  appendHistory({ task: 'third task', tokens: 1, risk: 'LOW', model: 'Haiku 4.5' });
+  assert.strictEqual(fs.statSync(testHistoryFile).mode & 0o777, 0o600, 'permissions re-tightened on append');
+}
+
 try { fs.unlinkSync(testHistoryFile); } catch {}
 process.env = originalEnv;
 

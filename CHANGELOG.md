@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- Security: `--stdin` input for slash commands (fixes shell injection via `$ARGUMENTS`), `execFileSync` for git, history file mode 0600, Privacy section in README
+
 ## [1.5.0] — 2026-04-25
 
 ### V13 — History stats

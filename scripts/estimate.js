@@ -4,6 +4,7 @@ const path         = require('path');
 const childProcess = require('child_process');
 const { estimateTokens, countTokensViaAPI }            = require('./lib/tokenizer');
 const { classifyRisk, contextHeadroom }                = require('./lib/risk');
+const { resolveArgv }    = require('./lib/stdin-input');
 const { loadConfig }                                   = require('./lib/config');
 const { appendHistory }                                = require('./lib/history');
 const { estimateContextOverhead, autoDetectFiles }     = require('./lib/context');
@@ -64,9 +65,9 @@ function parseArgs(argv) {
 
 function getGitDiff() {
   try {
-    const staged = childProcess.execSync('git diff --staged', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+    const staged = childProcess.execFileSync('git', ['diff', '--staged'], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
     if (staged.trim()) return staged;
-    return childProcess.execSync('git diff HEAD', { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+    return childProcess.execFileSync('git', ['diff', 'HEAD'], { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
   } catch { return ''; }
 }
 
@@ -92,7 +93,7 @@ async function countText(text, method) {
 }
 
 async function main() {
-  const { task, filePaths, useGitDiff, turns, noAuto, outputJson } = parseArgs(process.argv.slice(2));
+  const { task, filePaths, useGitDiff, turns, noAuto, outputJson } = parseArgs(resolveArgv(process.argv.slice(2)));
 
   if (!task) { process.stdout.write(HELP); process.exit(0); }
 

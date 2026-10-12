@@ -249,6 +249,16 @@ Short prompts (< 100 tokens) are skipped automatically.
 
 ---
 
+## Privacy & security
+
+- No data is sent to third parties.
+- The only network call is optional: exact token counting via `api.anthropic.com`, and only when `ANTHROPIC_API_KEY` is set.
+- History is stored locally in `~/.mimir-history.json` with `0600` permissions.
+- Mimir reads local Claude settings and `CLAUDE.md` files to size the context.
+- `git` is executed without a shell (`execFileSync`), so no shell injection.
+
+---
+
 ## How it works
 
 ### Token counting

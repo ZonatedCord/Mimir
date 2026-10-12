@@ -8,7 +8,9 @@ allowed-tools: [Bash]
 Run the Mimir task splitter and display the suggested breakdown:
 
 ```bash
-node ~/.claude/mimir/scripts/split.js "$ARGUMENTS"
+node ~/.claude/mimir/scripts/split.js --stdin <<'MIMIR_EOF'
+$ARGUMENTS
+MIMIR_EOF
 ```
 
 ## Examples

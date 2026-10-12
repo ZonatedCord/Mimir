@@ -5,9 +5,11 @@ description: Estimate token cost and risk level before running a task. Use when 
 
 Extract the task description from the current request. Run this command and print the output verbatim:
 
-    node ~/.codex/mimir/scripts/estimate.js "<task>" [--files f1 f2] [--git-diff] [--turns N] [--no-auto]
+    node ~/.codex/mimir/scripts/estimate.js --stdin [--files f1 f2] [--git-diff] [--turns N] [--no-auto] <<'MIMIR_EOF'
+    <task>
+    MIMIR_EOF
 
-- Replace `<task>` with the task description. Quote it.
+- Replace `<task>` with the task description. The here-doc delimiter is quoted, so the shell does not expand the text; flags go before the here-doc, never inside the task text.
 - Add `--files f1 f2` if the user named specific files.
 - Add `--git-diff` if the task involves reviewing current changes.
 - Add `--turns N` if the session has many messages already (N ≈ message count).

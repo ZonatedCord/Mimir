@@ -8,7 +8,9 @@ allowed-tools: [Bash]
 Run the Mimir preflight check and display the output:
 
 ```bash
-node ~/.claude/mimir/scripts/estimate.js "$ARGUMENTS"
+node ~/.claude/mimir/scripts/estimate.js --stdin <<'MIMIR_EOF'
+$ARGUMENTS
+MIMIR_EOF
 ```
 
 ## Examples
